@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertCircle,
-  ArrowLeft,
   ArrowRight,
   BarChart3,
   Camera,
   CheckCircle2,
   ChevronRight,
+  Copy,
   Eye,
+  House,
   History,
   Radar,
   RefreshCw,
@@ -351,6 +352,26 @@ function formatHistoryDate(timestamp: number) {
   }).format(timestamp)
 }
 
+function buildConsultationNotes(result: AnalysisResult, scoreSummary: ScoreSummary) {
+  return [
+    'BiteReveal consultation notes',
+    '',
+    `Overall signal score: ${scoreSummary.overall}/100`,
+    `Confidence: ${result.confidence}`,
+    '',
+    'Main findings:',
+    ...result.insights.map(
+      (insight, index) => `${index + 1}. ${insight.title} (${insight.severity}) - ${insight.summary}`,
+    ),
+    '',
+    'Current visible condition:',
+    result.currentVisibleCondition.summary,
+    '',
+    'Future risk snapshot:',
+    result.futureRiskSnapshot.summary,
+  ].join('\n')
+}
+
 async function readCaptureMeta(dataUrl: string, file: File): Promise<CaptureMeta> {
   return new Promise((resolve) => {
     const image = new Image()
@@ -532,6 +553,7 @@ export default function BiteRevealPrototype() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [analysisNotice, setAnalysisNotice] = useState<string | null>(null)
+  const [consultationCopied, setConsultationCopied] = useState(false)
   const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([])
   const [currentScanId, setCurrentScanId] = useState<string | null>(null)
 
@@ -582,6 +604,7 @@ export default function BiteRevealPrototype() {
       setAnalysisResult(null)
       setAnalysisError(null)
       setAnalysisNotice(null)
+      setConsultationCopied(false)
       setCurrentScanId(null)
     }
     reader.readAsDataURL(file)
@@ -599,6 +622,7 @@ export default function BiteRevealPrototype() {
       setProgress(8)
       setAnalysisError(null)
       setAnalysisNotice(null)
+      setConsultationCopied(false)
 
       const analysisPromise = fetch(`${apiBaseUrl}/api/analyze`, {
         method: 'POST',
@@ -663,6 +687,7 @@ export default function BiteRevealPrototype() {
       setSelectedDetail(null)
       setAnalysisResult(null)
       setAnalysisNotice(null)
+      setConsultationCopied(false)
       setAnalysisError(
         error instanceof Error
           ? error.message
@@ -683,6 +708,7 @@ export default function BiteRevealPrototype() {
     setAnalysisResult(null)
     setAnalysisError(null)
     setAnalysisNotice(null)
+    setConsultationCopied(false)
     setCurrentScanId(null)
     if (inputRef.current) inputRef.current.value = ''
   }
@@ -691,6 +717,11 @@ export default function BiteRevealPrototype() {
     setHasAnalyzed(false)
     setSelectedDetail(null)
     setProgress(uploadedImage ? 55 : 20)
+  }
+
+  const returnHome = () => {
+    returnToUpload()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const activeResult = analysisResult ?? fallbackAnalysis
@@ -717,6 +748,10 @@ export default function BiteRevealPrototype() {
     currentScanIndex >= 0 ? scanHistory[currentScanIndex + 1] : scanHistory[0] ?? null
   const historyDelta =
     previousScan ? scoreDeltaLabel(scoreSummary.overall, previousScan.scoreSummary.overall) : null
+  const consultationNotes = useMemo(
+    () => buildConsultationNotes(activeResult, scoreSummary),
+    [activeResult, scoreSummary],
+  )
 
   const openHistoryScan = (entry: ScanHistoryEntry) => {
     setUploadedImage(entry.imageSrc)
@@ -733,6 +768,15 @@ export default function BiteRevealPrototype() {
         : 'Loaded a saved scan from progress history.',
     )
     setCurrentScanId(entry.id)
+  }
+
+  const copyConsultationNotes = async () => {
+    try {
+      await navigator.clipboard.writeText(consultationNotes)
+      setConsultationCopied(true)
+    } catch (error) {
+      console.error('Unable to copy consultation notes:', error)
+    }
   }
 
   const detailLabel =
@@ -862,10 +906,14 @@ export default function BiteRevealPrototype() {
                             </div>
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-                          <div className="pointer-events-none absolute inset-4 rounded-[1.2rem] border border-white/70 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)]" />
-                          <div className="pointer-events-none absolute inset-x-[22%] top-[16%] h-10 rounded-full border border-cyan-200/80 bg-cyan-100/20" />
-                          <div className="pointer-events-none absolute left-1/2 top-[18%] h-[56%] w-px -translate-x-1/2 bg-white/70" />
-                          <div className="pointer-events-none absolute inset-x-[24%] bottom-[22%] h-px bg-white/70" />
+                          {uploadedImage && (
+                            <>
+                              <div className="pointer-events-none absolute inset-4 rounded-[1.2rem] border border-white/70 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)]" />
+                              <div className="pointer-events-none absolute inset-x-[22%] top-[16%] h-10 rounded-full border border-cyan-200/80 bg-cyan-100/20" />
+                              <div className="pointer-events-none absolute left-1/2 top-[18%] h-[56%] w-px -translate-x-1/2 bg-white/70" />
+                              <div className="pointer-events-none absolute inset-x-[24%] bottom-[22%] h-px bg-white/70" />
+                            </>
+                          )}
                           {uploadedImage && (
                             <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-slate-700 backdrop-blur">
                               Source image loaded
@@ -1177,6 +1225,28 @@ export default function BiteRevealPrototype() {
                               </div>
                             </div>
 
+                            <div className="rounded-[1.25rem] border border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] p-4">
+                              <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                <Shield className="h-4 w-4 text-cyan-600" />
+                                If you want to consult
+                              </div>
+                              <div className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                                <p>1. Save this scan and open the focus page that feels most relevant.</p>
+                                <p>2. Bring the signal score and insight titles to a dentist or orthodontist.</p>
+                                <p>3. Ask about bite alignment, wear changes, and spacing patterns.</p>
+                              </div>
+                              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <Button variant="outline" onClick={copyConsultationNotes}>
+                                  <Copy className="h-4 w-4" />
+                                  {consultationCopied ? 'Notes copied' : 'Copy consult notes'}
+                                </Button>
+                                <Button variant="outline" onClick={resetDemo}>
+                                  <RefreshCw className="h-4 w-4" />
+                                  New scan
+                                </Button>
+                              </div>
+                            </div>
+
                             {previousScan && historyDelta && (
                               <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
                                 <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
@@ -1200,9 +1270,9 @@ export default function BiteRevealPrototype() {
                             )}
 
                             <div className="grid grid-cols-2 gap-3">
-                              <Button variant="outline" onClick={returnToUpload}>
-                                <ArrowLeft className="h-4 w-4" />
-                                Back to upload
+                              <Button variant="outline" onClick={returnHome}>
+                                <House className="h-4 w-4" />
+                                Return home
                               </Button>
                               <Button variant="outline" onClick={resetDemo}>
                                 <RefreshCw className="h-4 w-4" />
@@ -1221,6 +1291,30 @@ export default function BiteRevealPrototype() {
                           </CardHeader>
 
                           <CardContent className="space-y-5 p-5 md:p-6">
+                            <div className="grid gap-3 md:grid-cols-3">
+                              {scoreSummary.dimensions.map((dimension) => (
+                                <div
+                                  key={dimension.label}
+                                  className="rounded-[1rem] border border-slate-200 bg-slate-50/80 p-4"
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      {dimension.label}
+                                    </div>
+                                    <div className="text-sm text-slate-500">
+                                      {dimension.score}
+                                    </div>
+                                  </div>
+                                  <div className="mt-3">
+                                    <ResultMeter
+                                      score={Math.max(1, Math.round(dimension.score / 34))}
+                                      activeClassName={dimension.toneClassName}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
                             {effectiveDetail.type === 'current' && (
                               <div className="space-y-5">
                                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_320px]">
@@ -1242,21 +1336,49 @@ export default function BiteRevealPrototype() {
                                     <p className="mt-3 text-sm leading-7 text-slate-600">
                                       {activeResult.currentVisibleCondition.summary}
                                     </p>
-                                    <div className="mt-5 space-y-3">
+                                    <div className="mt-5 grid gap-3">
                                       {activeResult.currentVisibleCondition.focusPoints.map(
-                                        (point, index) => (
-                                          <div
-                                            key={point}
-                                            className="rounded-[1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80"
-                                          >
-                                            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                                              Focus {index + 1}
+                                        (point, index) => {
+                                          const focusStyles = [
+                                            'border-cyan-200 bg-cyan-50/80',
+                                            'border-amber-200 bg-amber-50/80',
+                                            'border-rose-200 bg-rose-50/80',
+                                          ]
+                                          const iconStyles = [
+                                            'bg-cyan-600',
+                                            'bg-amber-500',
+                                            'bg-rose-500',
+                                          ]
+
+                                          return (
+                                            <div
+                                              key={point}
+                                              className={cn(
+                                                'rounded-[1rem] border p-4 shadow-sm',
+                                                focusStyles[index] || 'border-slate-200 bg-white',
+                                              )}
+                                            >
+                                              <div className="flex items-start gap-3">
+                                                <div
+                                                  className={cn(
+                                                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold text-white',
+                                                    iconStyles[index] || 'bg-slate-700',
+                                                  )}
+                                                >
+                                                  {index + 1}
+                                                </div>
+                                                <div>
+                                                  <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                                    Focus {index + 1}
+                                                  </div>
+                                                  <div className="mt-2 text-sm font-medium leading-6 text-slate-900">
+                                                    {point}
+                                                  </div>
+                                                </div>
+                                              </div>
                                             </div>
-                                            <div className="mt-2 text-sm font-medium leading-6 text-slate-900">
-                                              {point}
-                                            </div>
-                                          </div>
-                                        ),
+                                          )
+                                        },
                                       )}
                                     </div>
                                   </div>
