@@ -176,26 +176,25 @@ export default function BiteRevealPrototype() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_30%),linear-gradient(180deg,#f8fbff_0%,#f6f7fb_100%)] text-slate-900">
-      <div className="mx-auto max-w-7xl px-6 py-10 md:px-10 md:py-14">
+      <div className="mx-auto max-w-[1280px] px-6 py-10 md:px-10 md:py-14">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
-          className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]"
+          className="grid gap-10 xl:grid-cols-[minmax(0,1.35fr)_320px]"
         >
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Badge className="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-1 text-cyan-700">
               Early Protection Platform Concept
             </Badge>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <h1 className="max-w-3xl text-4xl font-semibold tracking-tight md:text-6xl">
                 BiteReveal
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-slate-600 md:text-xl">
-                A creative early oral health platform that turns a simple teeth
-                photo into a visible warning moment, revealing bite imbalance,
-                wear risk, and future shift before pain appears.
+              <p className="max-w-2xl text-lg leading-8 text-slate-600 md:text-[1.15rem]">
+                A simple teeth photo becomes a quick, visual warning for bite
+                imbalance, wear risk, and future shift.
               </p>
             </div>
 
@@ -203,34 +202,27 @@ export default function BiteRevealPrototype() {
               <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
                 <CardContent className="p-5">
                   <Eye className="mb-3 h-5 w-5" />
-                  <div className="text-sm font-medium">
-                    Make invisible risks visible
-                  </div>
+                  <div className="text-sm font-medium">Spot hidden patterns</div>
                   <div className="mt-1 text-sm text-slate-500">
-                    Translate subtle oral issues into intuitive visual cues.
+                    Turn subtle issues into visuals people understand fast.
                   </div>
                 </CardContent>
               </Card>
               <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
                 <CardContent className="p-5">
                   <Shield className="mb-3 h-5 w-5" />
-                  <div className="text-sm font-medium">
-                    Promote early protection
-                  </div>
+                  <div className="text-sm font-medium">Encourage early action</div>
                   <div className="mt-1 text-sm text-slate-500">
-                    Encourage action before conditions become painful or severe.
+                    Create a reason to check in before pain shows up.
                   </div>
                 </CardContent>
               </Card>
               <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
                 <CardContent className="p-5">
                   <Sparkles className="mb-3 h-5 w-5" />
-                  <div className="text-sm font-medium">
-                    Creative interpretation
-                  </div>
+                  <div className="text-sm font-medium">Keep it approachable</div>
                   <div className="mt-1 text-sm text-slate-500">
-                    Use visual storytelling, not technical jargon, to build
-                    awareness.
+                    Use clear storytelling instead of heavy technical language.
                   </div>
                 </CardContent>
               </Card>
@@ -239,13 +231,11 @@ export default function BiteRevealPrototype() {
             <Card className="overflow-hidden rounded-[1.75rem] border-slate-200/80 shadow-lg shadow-slate-200/50">
               <CardHeader className="border-b border-slate-100 bg-white/70 backdrop-blur">
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <ScanLine className="h-5 w-5" /> Core interaction prototype
+                  <ScanLine className="h-5 w-5" /> Prototype demo
                 </CardTitle>
-                <CardDescription>
-                  One focused experience: upload, reveal, project.
-                </CardDescription>
+                <CardDescription>Upload, reveal, preview.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-5 p-5 md:p-6">
+              <CardContent className="space-y-6 p-5 md:p-7">
                 <input
                   ref={inputRef}
                   type="file"
@@ -254,7 +244,7 @@ export default function BiteRevealPrototype() {
                   onChange={(event) => onUpload(event.target.files?.[0])}
                 />
 
-                <div className="grid gap-5 md:grid-cols-[0.95fr_1.05fr]">
+                <div className="grid items-start gap-6 xl:grid-cols-[0.88fr_1.12fr]">
                   <div className="space-y-4">
                     <button
                       type="button"
@@ -300,8 +290,7 @@ export default function BiteRevealPrototype() {
                       </div>
                       <Progress value={readiness} />
                       <div className="text-sm text-slate-500">
-                        Upload a photo, then run the concept analysis to reveal
-                        insight cards and a future-risk mockup.
+                        Upload a photo and run the demo to unlock the preview.
                       </div>
                     </div>
                   </div>
@@ -314,7 +303,7 @@ export default function BiteRevealPrototype() {
                             Visual scan simulation
                           </div>
                           <div className="text-sm text-slate-500">
-                            Demo-only interpretation for concept testing
+                            Quick concept preview
                           </div>
                         </div>
                         <Button
@@ -366,9 +355,7 @@ export default function BiteRevealPrototype() {
                       <div className="flex items-start gap-3">
                         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                         <p>
-                          This prototype is a visual concept, not a medical
-                          diagnosis. It is meant to help users notice patterns
-                          worth checking with a dental professional.
+                          Demo only. This is a concept view, not a diagnosis.
                         </p>
                       </div>
                     </div>
@@ -419,9 +406,8 @@ export default function BiteRevealPrototype() {
                               Ready to simulate the reveal
                             </div>
                             <p className="text-sm leading-6 text-slate-500">
-                              Choose a photo or use the demo image, then run the
-                              mock analysis to generate insight cards and a
-                              future-risk preview.
+                              Use the demo image or upload your own to preview
+                              the experience.
                             </p>
                           </div>
                         </motion.div>
@@ -433,41 +419,31 @@ export default function BiteRevealPrototype() {
             </Card>
           </div>
 
-          <div className="space-y-5">
-            <Card className="rounded-[1.75rem] border-slate-200/70 bg-slate-950 text-white shadow-xl shadow-slate-300/40">
+          <div className="space-y-5 xl:sticky xl:top-8 xl:self-start">
+            <Card className="rounded-[1.75rem] border-slate-900/90 bg-[linear-gradient(160deg,#0f172a_0%,#111827_52%,#0b1220_100%)] text-white shadow-xl shadow-slate-300/40">
               <CardHeader>
-                <CardTitle className="text-white">Why this concept works</CardTitle>
-                <CardDescription className="text-slate-300">
-                  BiteReveal turns an invisible oral-health concern into a clear
-                  visual moment people can understand quickly.
+                <CardTitle className="text-white">Why it clicks</CardTitle>
+                <CardDescription className="text-slate-200">
+                  BiteReveal makes an invisible concern feel clear and immediate.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                  <div className="text-sm font-medium text-cyan-200">
-                    Emotional hook
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    Showing a possible future outcome makes preventive care feel
-                    immediate instead of abstract.
+                <div className="rounded-[1.25rem] border border-cyan-400/25 bg-white/8 p-4">
+                  <div className="text-sm font-medium text-cyan-200">Fast signal</div>
+                  <p className="mt-1 text-sm leading-6 text-slate-100">
+                    One photo quickly turns risk into something visible.
                   </p>
                 </div>
-                <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                  <div className="text-sm font-medium text-cyan-200">
-                    Fast onboarding
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    A single image upload keeps the experience simple for early
-                    concept demos and stakeholder feedback.
+                <div className="rounded-[1.25rem] border border-cyan-400/25 bg-white/8 p-4">
+                  <div className="text-sm font-medium text-cyan-200">Low friction</div>
+                  <p className="mt-1 text-sm leading-6 text-slate-100">
+                    The flow is simple enough for demos and first-time users.
                   </p>
                 </div>
-                <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                  <div className="text-sm font-medium text-cyan-200">
-                    Clear next step
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    The output frames the product as an early-warning tool that
-                    guides users toward professional follow-up.
+                <div className="rounded-[1.25rem] border border-cyan-400/25 bg-white/8 p-4">
+                  <div className="text-sm font-medium text-cyan-200">Clear follow-up</div>
+                  <p className="mt-1 text-sm leading-6 text-slate-100">
+                    The result naturally points people toward professional care.
                   </p>
                 </div>
               </CardContent>
@@ -475,37 +451,32 @@ export default function BiteRevealPrototype() {
 
             <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
               <CardHeader>
-                <CardTitle>Suggested next product moves</CardTitle>
-                <CardDescription>
-                  Good directions if you want to develop this prototype further.
-                </CardDescription>
+                <CardTitle>Next moves</CardTitle>
+                <CardDescription>Simple ways to sharpen the prototype.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="rounded-[1.25rem] bg-slate-50 p-4">
                   <div className="text-sm font-medium text-slate-900">
-                    Add guided photo capture
+                    Guided photo capture
                   </div>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Help users take consistent front-facing photos with framing
-                    guides and lighting hints.
+                    Add framing and lighting hints for better inputs.
                   </p>
                 </div>
                 <div className="rounded-[1.25rem] bg-slate-50 p-4">
                   <div className="text-sm font-medium text-slate-900">
-                    Replace demo logic with real scoring
+                    Real scoring
                   </div>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Connect the experience to an actual image-analysis pipeline
-                    and confidence scoring.
+                    Swap the mock logic for a real analysis pipeline.
                   </p>
                 </div>
                 <div className="rounded-[1.25rem] bg-slate-50 p-4">
                   <div className="text-sm font-medium text-slate-900">
-                    Add comparison history
+                    Progress history
                   </div>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Let users revisit previous scans to see visible trend
-                    changes over time.
+                    Let users compare scans over time.
                   </p>
                 </div>
               </CardContent>
