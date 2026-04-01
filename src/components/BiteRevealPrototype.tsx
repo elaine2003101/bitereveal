@@ -152,7 +152,7 @@ export default function BiteRevealPrototype() {
   const [analysisError, setAnalysisError] = useState<string | null>(null)
 
   const displayImage = uploadedImage || demoImage
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || ''
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '')
 
   const readiness = useMemo(() => {
     if (!uploadedImage) return 20
