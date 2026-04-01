@@ -7,11 +7,13 @@
     "dev": "vite",
     "server:dev": "node --watch server/index.js",
     "dev:full": "concurrently -n api,web -c cyan,magenta \"npm:server:dev\" \"npm:dev\"",
+    "start": "node server/index.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "framer-motion": "^12.38.0",

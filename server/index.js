@@ -1,10 +1,32 @@
 import 'dotenv/config'
 
+import cors from 'cors'
 import express from 'express'
 import OpenAI from 'openai'
 
 const app = express()
 const port = Number(process.env.PORT || 8787)
+
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS ||
+  'http://localhost:5173,https://elaine2003101.github.io'
+)
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true)
+        return
+      }
+
+      callback(new Error(`Origin ${origin} is not allowed by CORS`))
+    },
+  }),
+)
 
 app.use(express.json({ limit: '12mb' }))
 

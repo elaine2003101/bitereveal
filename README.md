@@ -30,6 +30,32 @@ The frontend calls `POST /api/analyze`, which proxies to the local API in develo
 - For a separately deployed API, rebuild the frontend with `VITE_API_BASE_URL=https://your-api-host`.
 - The backend uses the OpenAI Responses API with image input and structured JSON output.
 
+## Make GitHub Pages analysis work
+
+Recommended path: deploy the backend on Render.
+
+1. Push this repo to GitHub.
+2. In Render, create a new `Web Service` from the GitHub repo.
+3. Render will detect `render.yaml`.
+4. Set `OPENAI_API_KEY` in Render.
+5. Deploy and copy your backend URL, for example:
+
+```text
+https://bitereveal-api.onrender.com
+```
+
+6. In GitHub, open:
+   `Repo -> Settings -> Secrets and variables -> Actions -> Variables`
+7. Add:
+
+```text
+VITE_API_BASE_URL=https://bitereveal-api.onrender.com
+```
+
+8. Push a new frontend commit so GitHub Pages rebuilds with that API URL.
+
+After that, the frontend at `https://elaine2003101.github.io/bitereveal/` will call the deployed backend instead of `/api` on GitHub Pages.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)

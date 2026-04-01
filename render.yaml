@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: bitereveal-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: ALLOWED_ORIGINS
+        value: https://elaine2003101.github.io,http://localhost:5173
