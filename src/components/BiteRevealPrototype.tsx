@@ -114,6 +114,25 @@ type DetailView =
   | { type: 'future' }
   | { type: 'insight'; index: number }
 
+function shouldUseDemoFallback(message: string, status?: number) {
+  const normalized = message.toLowerCase()
+
+  return (
+    status === 429 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    normalized.includes('quota') ||
+    normalized.includes('rate limit') ||
+    normalized.includes('too many requests') ||
+    normalized.includes('toomanyrequests') ||
+    normalized.includes('exceeded your current quota') ||
+    normalized.includes('free_tier') ||
+    normalized.includes('service unavailable') ||
+    normalized.includes('failed to fetch')
+  )
+}
+
 function AnalysisOverlay({ active }: { active: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.5rem]">
@@ -150,6 +169,7 @@ export default function BiteRevealPrototype() {
   const [selectedDetail, setSelectedDetail] = useState<DetailView | null>(null)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [analysisNotice, setAnalysisNotice] = useState<string | null>(null)
 
   const displayImage = uploadedImage || demoImage
   const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '')
@@ -171,6 +191,7 @@ export default function BiteRevealPrototype() {
       setSelectedDetail(null)
       setAnalysisResult(null)
       setAnalysisError(null)
+      setAnalysisNotice(null)
     }
     reader.readAsDataURL(file)
   }
@@ -181,6 +202,7 @@ export default function BiteRevealPrototype() {
       setHasAnalyzed(false)
       setProgress(8)
       setAnalysisError(null)
+      setAnalysisNotice(null)
 
       const analysisPromise = fetch(`${apiBaseUrl}/api/analyze`, {
         method: 'POST',
@@ -202,9 +224,21 @@ export default function BiteRevealPrototype() {
       const payload = (await response.json()) as AnalysisResult | { error: string }
 
       if (!response.ok || 'error' in payload) {
-        throw new Error(
-          'error' in payload ? payload.error : 'Analysis request failed.',
-        )
+        const message =
+          'error' in payload ? payload.error : 'Analysis request failed.'
+
+        if (shouldUseDemoFallback(message, response.status)) {
+          setAnalysisResult(fallbackAnalysis)
+          setAnalysisNotice(
+            'Live AI is unavailable right now, so this view is showing demo results with your uploaded photo.',
+          )
+          setProgress(100)
+          setHasAnalyzed(true)
+          setSelectedDetail({ type: 'current' })
+          return
+        }
+
+        throw new Error(message)
       }
 
       setAnalysisResult(payload)
@@ -216,6 +250,7 @@ export default function BiteRevealPrototype() {
       setHasAnalyzed(false)
       setSelectedDetail(null)
       setAnalysisResult(null)
+      setAnalysisNotice(null)
       setAnalysisError(
         error instanceof Error
           ? error.message
@@ -234,6 +269,7 @@ export default function BiteRevealPrototype() {
     setSelectedDetail(null)
     setAnalysisResult(null)
     setAnalysisError(null)
+    setAnalysisNotice(null)
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -602,7 +638,14 @@ export default function BiteRevealPrototype() {
                                 </div>
                               </CardHeader>
 
-                              <CardContent className="p-5 md:p-6">
+                              <CardContent className="space-y-4 p-5 md:p-6">
+                                {analysisNotice && (
+                                  <div className="rounded-[1.25rem] border border-cyan-200 bg-cyan-50/80 p-4 text-sm text-cyan-900">
+                                    <div className="font-medium">Demo fallback active</div>
+                                    <p className="mt-1 leading-6">{analysisNotice}</p>
+                                  </div>
+                                )}
+
                                 {!selectedDetail && (
                                   <div className="grid gap-4 md:grid-cols-2">
                                     <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
