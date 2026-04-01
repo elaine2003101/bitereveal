@@ -1,15 +1,22 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   Camera,
+  CheckCircle2,
+  ChevronRight,
   Eye,
+  History,
+  Radar,
   RefreshCw,
   ScanLine,
   Shield,
   Sparkles,
+  TriangleAlert,
+  TrendingUp,
   Upload,
 } from 'lucide-react'
 
@@ -23,6 +30,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { cn } from '@/lib/utils'
 
 type AnalysisInsight = {
   title: string
@@ -47,6 +55,43 @@ type AnalysisResult = {
   }
   insights: AnalysisInsight[]
   disclaimer: string
+}
+
+type CaptureMeta = {
+  width: number
+  height: number
+  mimeType: string
+  sizeKb: number
+}
+
+type GuidanceItem = {
+  label: string
+  detail: string
+  status: 'good' | 'watch'
+}
+
+type ScoreDimension = {
+  label: string
+  score: number
+  summary: string
+  toneClassName: string
+}
+
+type ScoreSummary = {
+  overall: number
+  label: string
+  action: string
+  confidenceScore: number
+  dimensions: ScoreDimension[]
+}
+
+type ScanHistoryEntry = {
+  id: string
+  createdAt: number
+  imageSrc: string
+  result: AnalysisResult
+  source: 'live' | 'demo'
+  scoreSummary: ScoreSummary
 }
 
 const fallbackAnalysis: AnalysisResult = {
@@ -105,9 +150,7 @@ const fallbackAnalysis: AnalysisResult = {
   ],
   disclaimer: 'Demo only. This is a concept view, not a diagnosis.',
 }
-
-const demoImage =
-  'https://images.unsplash.com/photo-1588776814546-ec7e4e3a7d1a?q=80&w=1200&auto=format&fit=crop'
+const HISTORY_STORAGE_KEY = 'bitereveal-scan-history-v1'
 
 type DetailView =
   | { type: 'current' }
@@ -130,6 +173,325 @@ function shouldUseDemoFallback(message: string, status?: number) {
     normalized.includes('free_tier') ||
     normalized.includes('service unavailable') ||
     normalized.includes('failed to fetch')
+  )
+}
+
+function getConfidenceMeta(confidence: AnalysisResult['confidence']) {
+  if (confidence === 'high') {
+    return {
+      label: 'Clear visual signal',
+      score: 3,
+      badgeClassName: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      panelClassName: 'border-emerald-200 bg-emerald-50/80',
+    }
+  }
+
+  if (confidence === 'medium') {
+    return {
+      label: 'Moderate visual signal',
+      score: 2,
+      badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
+      panelClassName: 'border-amber-200 bg-amber-50/80',
+    }
+  }
+
+  return {
+    label: 'Subtle visual signal',
+    score: 1,
+    badgeClassName: 'border-slate-200 bg-slate-100 text-slate-700',
+    panelClassName: 'border-slate-200 bg-slate-50/80',
+  }
+}
+
+function getSeverityMeta(severity: string) {
+  const normalized = severity.toLowerCase()
+
+  if (normalized.includes('watch')) {
+    return {
+      score: 3,
+      badgeClassName: 'border-rose-200 bg-rose-50 text-rose-700',
+      dotClassName: 'bg-rose-500',
+      panelClassName: 'border-rose-200 bg-rose-50/80',
+      icon: TriangleAlert,
+    }
+  }
+
+  if (normalized.includes('early')) {
+    return {
+      score: 2,
+      badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
+      dotClassName: 'bg-amber-500',
+      panelClassName: 'border-amber-200 bg-amber-50/80',
+      icon: Radar,
+    }
+  }
+
+  return {
+    score: 1,
+    badgeClassName: 'border-cyan-200 bg-cyan-50 text-cyan-700',
+    dotClassName: 'bg-cyan-500',
+    panelClassName: 'border-cyan-200 bg-cyan-50/80',
+    icon: CheckCircle2,
+  }
+}
+
+function severityToNumeric(severity: string) {
+  const normalized = severity.toLowerCase()
+
+  if (normalized.includes('watch')) return 82
+  if (normalized.includes('early')) return 64
+  return 36
+}
+
+function confidenceToNumeric(confidence: AnalysisResult['confidence']) {
+  if (confidence === 'high') return 88
+  if (confidence === 'medium') return 68
+  return 45
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)))
+}
+
+function buildScoreSummary(result: AnalysisResult): ScoreSummary {
+  const [symmetryInsight, wearInsight, crowdingInsight] = result.insights
+
+  const dimensions: ScoreDimension[] = [
+    {
+      label: 'Symmetry',
+      score: severityToNumeric(symmetryInsight?.severity || 'low'),
+      summary:
+        symmetryInsight?.summary ||
+        'No clear left-right imbalance was highlighted in this scan.',
+      toneClassName: 'bg-cyan-500',
+    },
+    {
+      label: 'Wear',
+      score: severityToNumeric(wearInsight?.severity || 'low'),
+      summary:
+        wearInsight?.summary ||
+        'No strong uneven wear cue was surfaced in this scan.',
+      toneClassName: 'bg-rose-500',
+    },
+    {
+      label: 'Crowding',
+      score: severityToNumeric(crowdingInsight?.severity || 'low'),
+      summary:
+        crowdingInsight?.summary ||
+        'No strong crowding tendency was surfaced in this scan.',
+      toneClassName: 'bg-amber-500',
+    },
+  ]
+
+  const confidenceScore = confidenceToNumeric(result.confidence)
+  const overall = clampScore(
+    dimensions[0].score * 0.4 +
+      dimensions[1].score * 0.35 +
+      dimensions[2].score * 0.25 +
+      (confidenceScore - 60) * 0.15,
+  )
+
+  if (overall >= 70) {
+    return {
+      overall,
+      label: 'Clear issue pattern',
+      action: 'Worth explaining carefully and encouraging follow-up.',
+      confidenceScore,
+      dimensions,
+    }
+  }
+
+  if (overall >= 45) {
+    return {
+      overall,
+      label: 'Moderate watch signal',
+      action: 'Useful as an early-warning result with a gentle prompt to check in.',
+      confidenceScore,
+      dimensions,
+    }
+  }
+
+  return {
+    overall,
+    label: 'Subtle visible pattern',
+    action: 'Best framed as a low-pressure watch item rather than an urgent issue.',
+    confidenceScore,
+    dimensions,
+  }
+}
+
+function scoreDeltaLabel(current: number, previous: number) {
+  const delta = current - previous
+
+  if (Math.abs(delta) < 4) {
+    return {
+      title: 'Looks similar to the last saved scan',
+      detail: 'The visible signal level is staying in a similar range.',
+    }
+  }
+
+  if (delta > 0) {
+    return {
+      title: `Up ${delta} points from the last saved scan`,
+      detail: 'This scan looks a bit more pronounced than the previous saved result.',
+    }
+  }
+
+  return {
+    title: `Down ${Math.abs(delta)} points from the last saved scan`,
+    detail: 'This scan looks slightly gentler than the previous saved result.',
+  }
+}
+
+function formatHistoryDate(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(timestamp)
+}
+
+async function readCaptureMeta(dataUrl: string, file: File): Promise<CaptureMeta> {
+  return new Promise((resolve) => {
+    const image = new Image()
+
+    image.onload = () => {
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+        mimeType: file.type || 'image/jpeg',
+        sizeKb: Math.round(file.size / 1024),
+      })
+    }
+
+    image.onerror = () => {
+      resolve({
+        width: 0,
+        height: 0,
+        mimeType: file.type || 'image/jpeg',
+        sizeKb: Math.round(file.size / 1024),
+      })
+    }
+
+    image.src = dataUrl
+  })
+}
+
+function buildCaptureGuidance(meta: CaptureMeta | null): GuidanceItem[] {
+  if (!meta) {
+    return [
+      {
+        label: 'Center the smile',
+        detail: 'Keep the mouth straight and close enough to fill the guide frame.',
+        status: 'watch',
+      },
+      {
+        label: 'Use bright light',
+        detail: 'Face a window or bright room so teeth edges are easier to read.',
+        status: 'watch',
+      },
+      {
+        label: 'Use a clean format',
+        detail: 'JPG or PNG works best for a stable analysis pass.',
+        status: 'watch',
+      },
+    ]
+  }
+
+  const minSide = Math.min(meta.width, meta.height)
+  const ratio = meta.height === 0 ? 1 : meta.width / meta.height
+
+  return [
+    {
+      label: 'Center the smile',
+      detail:
+        ratio >= 0.75 && ratio <= 1.6
+          ? 'Framing looks balanced enough for a front-facing scan.'
+          : 'Try a straighter front-facing photo with less tilt and less background.',
+      status: ratio >= 0.75 && ratio <= 1.6 ? 'good' : 'watch',
+    },
+    {
+      label: 'Use bright detail',
+      detail:
+        minSide >= 900
+          ? `The image has enough visible detail at ${meta.width} x ${meta.height}.`
+          : 'Move a little closer or use a sharper photo so the front teeth are clearer.',
+      status: minSide >= 900 ? 'good' : 'watch',
+    },
+    {
+      label: 'Use a stable file',
+      detail:
+        /image\/(jpeg|jpg|png|webp)/.test(meta.mimeType)
+          ? `${meta.mimeType.replace('image/', '').toUpperCase()} is a good upload format for this prototype.`
+          : 'JPG or PNG will be the most reliable format for this prototype.',
+      status: /image\/(jpeg|jpg|png|webp)/.test(meta.mimeType) ? 'good' : 'watch',
+    },
+  ]
+}
+
+function ResultMeter({
+  score,
+  activeClassName,
+}: {
+  score: number
+  activeClassName: string
+}) {
+  return (
+    <div className="flex gap-1.5">
+      {[0, 1, 2].map((index) => (
+        <div
+          key={index}
+          className={cn(
+            'h-2 flex-1 rounded-full bg-white/70 ring-1 ring-slate-200',
+            index < score && activeClassName,
+          )}
+        />
+      ))}
+    </div>
+  )
+}
+
+function DetailNavCard({
+  title,
+  subtitle,
+  active,
+  onClick,
+  badge,
+}: {
+  title: string
+  subtitle: string
+  active: boolean
+  onClick: () => void
+  badge?: string
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'w-full rounded-[1.15rem] border p-4 text-left transition',
+        active
+          ? 'border-cyan-300 bg-cyan-50 shadow-sm shadow-cyan-100'
+          : 'border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50/40',
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          <div className="mt-1 text-sm leading-6 text-slate-500">{subtitle}</div>
+        </div>
+        <div className="shrink-0">
+          {badge ? (
+            <Badge className="border-slate-200 bg-white/80 text-slate-700">
+              {badge}
+            </Badge>
+          ) : (
+            <ChevronRight className="h-4 w-4 text-slate-400" />
+          )}
+        </div>
+      </div>
+    </button>
   )
 }
 
@@ -163,6 +525,7 @@ function AnalysisOverlay({ active }: { active: boolean }) {
 export default function BiteRevealPrototype() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [uploadedMeta, setUploadedMeta] = useState<CaptureMeta | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [hasAnalyzed, setHasAnalyzed] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -170,9 +533,24 @@ export default function BiteRevealPrototype() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [analysisNotice, setAnalysisNotice] = useState<string | null>(null)
+  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([])
+  const [currentScanId, setCurrentScanId] = useState<string | null>(null)
 
-  const displayImage = uploadedImage || demoImage
   const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '')
+
+  useEffect(() => {
+    try {
+      const rawHistory = window.localStorage.getItem(HISTORY_STORAGE_KEY)
+      if (!rawHistory) return
+
+      const parsedHistory = JSON.parse(rawHistory) as ScanHistoryEntry[]
+      if (Array.isArray(parsedHistory)) {
+        setScanHistory(parsedHistory)
+      }
+    } catch (error) {
+      console.error('Unable to load scan history:', error)
+    }
+  }, [])
 
   const readiness = useMemo(() => {
     if (!uploadedImage) return 20
@@ -180,24 +558,43 @@ export default function BiteRevealPrototype() {
     return 100
   }, [uploadedImage, hasAnalyzed])
 
+  const updateScanHistory = (entry: ScanHistoryEntry) => {
+    setCurrentScanId(entry.id)
+    setScanHistory((previousHistory) => {
+      const nextHistory = [entry, ...previousHistory].slice(0, 6)
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(nextHistory))
+      return nextHistory
+    })
+  }
+
   const onUpload = (file?: File) => {
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = () => {
-      setUploadedImage(String(reader.result))
+    reader.onload = async () => {
+      const nextImage = String(reader.result)
+      const nextMeta = await readCaptureMeta(nextImage, file)
+
+      setUploadedImage(nextImage)
+      setUploadedMeta(nextMeta)
       setHasAnalyzed(false)
       setProgress(0)
       setSelectedDetail(null)
       setAnalysisResult(null)
       setAnalysisError(null)
       setAnalysisNotice(null)
+      setCurrentScanId(null)
     }
     reader.readAsDataURL(file)
   }
 
   const runAnalysis = async () => {
     try {
+      if (!uploadedImage) {
+        setAnalysisError('Please upload a smile photo before running the analysis.')
+        return
+      }
+
       setAnalyzing(true)
       setHasAnalyzed(false)
       setProgress(8)
@@ -210,7 +607,7 @@ export default function BiteRevealPrototype() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          imageDataUrl: displayImage,
+          imageDataUrl: uploadedImage,
         }),
       })
 
@@ -235,6 +632,14 @@ export default function BiteRevealPrototype() {
           setProgress(100)
           setHasAnalyzed(true)
           setSelectedDetail({ type: 'current' })
+          updateScanHistory({
+            id: crypto.randomUUID(),
+            createdAt: Date.now(),
+            imageSrc: uploadedImage,
+            result: fallbackAnalysis,
+            source: 'demo',
+            scoreSummary: buildScoreSummary(fallbackAnalysis),
+          })
           return
         }
 
@@ -245,6 +650,14 @@ export default function BiteRevealPrototype() {
       setProgress(100)
       setHasAnalyzed(true)
       setSelectedDetail({ type: 'current' })
+      updateScanHistory({
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+        imageSrc: uploadedImage,
+        result: payload,
+        source: 'live',
+        scoreSummary: buildScoreSummary(payload),
+      })
     } catch (error) {
       setProgress(0)
       setHasAnalyzed(false)
@@ -263,6 +676,7 @@ export default function BiteRevealPrototype() {
 
   const resetDemo = () => {
     setUploadedImage(null)
+    setUploadedMeta(null)
     setAnalyzing(false)
     setHasAnalyzed(false)
     setProgress(0)
@@ -270,6 +684,7 @@ export default function BiteRevealPrototype() {
     setAnalysisResult(null)
     setAnalysisError(null)
     setAnalysisNotice(null)
+    setCurrentScanId(null)
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -279,16 +694,52 @@ export default function BiteRevealPrototype() {
     setProgress(uploadedImage ? 55 : 20)
   }
 
+  const activeResult = analysisResult ?? fallbackAnalysis
+  const scoreSummary = useMemo(
+    () => buildScoreSummary(activeResult),
+    [activeResult],
+  )
+  const captureGuidance = useMemo(
+    () => buildCaptureGuidance(uploadedMeta),
+    [uploadedMeta],
+  )
+  const captureReadyCount = captureGuidance.filter(
+    (item) => item.status === 'good',
+  ).length
+  const confidenceMeta = getConfidenceMeta(activeResult.confidence)
   const selectedInsight =
     selectedDetail?.type === 'insight'
-      ? (analysisResult ?? fallbackAnalysis).insights[selectedDetail.index]
+      ? activeResult.insights[selectedDetail.index]
       : null
+  const leadInsight = activeResult.insights[0]
+  const currentScanIndex = scanHistory.findIndex((entry) => entry.id === currentScanId)
+  const previousScan =
+    currentScanIndex >= 0 ? scanHistory[currentScanIndex + 1] : scanHistory[0] ?? null
+  const historyDelta =
+    previousScan ? scoreDeltaLabel(scoreSummary.overall, previousScan.scoreSummary.overall) : null
+
+  const openHistoryScan = (entry: ScanHistoryEntry) => {
+    setUploadedImage(entry.imageSrc)
+    setUploadedMeta(null)
+    setAnalysisResult(entry.result)
+    setHasAnalyzed(true)
+    setAnalyzing(false)
+    setProgress(100)
+    setSelectedDetail(null)
+    setAnalysisError(null)
+    setAnalysisNotice(
+      entry.source === 'demo'
+        ? 'Loaded a saved demo-result scan from progress history.'
+        : 'Loaded a saved scan from progress history.',
+    )
+    setCurrentScanId(entry.id)
+  }
 
   const detailLabel =
     selectedDetail?.type === 'current'
-      ? 'Current visible condition'
+      ? activeResult.currentVisibleCondition.title
       : selectedDetail?.type === 'future'
-        ? 'Future risk snapshot'
+        ? activeResult.futureRiskSnapshot.title
         : selectedInsight?.title
 
   return (
@@ -367,6 +818,7 @@ export default function BiteRevealPrototype() {
                   ref={inputRef}
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   className="hidden"
                   onChange={(event) => onUpload(event.target.files?.[0])}
                 />
@@ -387,14 +839,38 @@ export default function BiteRevealPrototype() {
                           onClick={() => inputRef.current?.click()}
                         >
                           <img
-                            src={displayImage}
-                            alt="Teeth input demo"
+                            src={uploadedImage ?? ''}
+                            alt="Uploaded smile"
                             className="h-full w-full object-cover"
                           />
+                          {!uploadedImage && (
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_35%),linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)]" />
+                          )}
+                          {!uploadedImage && (
+                            <div className="absolute inset-0 flex items-center justify-center p-8">
+                              <div className="max-w-sm space-y-3 text-center">
+                                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-cyan-700 shadow-sm ring-1 ring-slate-200">
+                                  <Upload className="h-5 w-5" />
+                                </div>
+                                <div className="text-lg font-semibold text-slate-900">
+                                  Upload a smile photo
+                                </div>
+                                <p className="text-sm leading-6 text-slate-500">
+                                  Use a front-facing JPG or PNG with good light so the teeth line is easier to read.
+                                </p>
+                              </div>
+                            </div>
+                          )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-                          <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-slate-700 backdrop-blur">
-                            {uploadedImage ? 'Source image loaded' : 'Demo image loaded'}
-                          </div>
+                          <div className="pointer-events-none absolute inset-4 rounded-[1.2rem] border border-white/70 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)]" />
+                          <div className="pointer-events-none absolute inset-x-[22%] top-[16%] h-10 rounded-full border border-cyan-200/80 bg-cyan-100/20" />
+                          <div className="pointer-events-none absolute left-1/2 top-[18%] h-[56%] w-px -translate-x-1/2 bg-white/70" />
+                          <div className="pointer-events-none absolute inset-x-[24%] bottom-[22%] h-px bg-white/70" />
+                          {uploadedImage && (
+                            <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-slate-700 backdrop-blur">
+                              Source image loaded
+                            </div>
+                          )}
                           <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-slate-950/80 px-3 py-1 text-xs font-medium text-white backdrop-blur">
                             <Upload className="h-3.5 w-3.5" />
                             Click to choose a smile photo
@@ -426,6 +902,50 @@ export default function BiteRevealPrototype() {
                           <Progress value={readiness} />
                           <div className="text-sm text-slate-500">
                             Upload a photo and run the demo to unlock the results page.
+                          </div>
+                        </div>
+
+                        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <Camera className="h-4 w-4 text-cyan-700" />
+                            Guided photo capture
+                          </div>
+                          <div className="mt-3 flex items-center justify-between gap-3">
+                            <div className="text-lg font-semibold text-slate-900">
+                              {captureReadyCount}/3 capture checks ready
+                            </div>
+                            <Badge className="border-slate-200 bg-slate-100 text-slate-700">
+                              {uploadedMeta
+                                ? `${uploadedMeta.width} x ${uploadedMeta.height}`
+                                : 'Waiting for photo'}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            {captureGuidance.map((item) => (
+                              <div
+                                key={item.label}
+                                className="rounded-[1rem] border border-slate-200 bg-slate-50/80 p-4"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      {item.label}
+                                    </div>
+                                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                                      {item.detail}
+                                    </p>
+                                  </div>
+                                  <div className="shrink-0">
+                                    {item.status === 'good' ? (
+                                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                    ) : (
+                                      <AlertCircle className="h-5 w-5 text-amber-500" />
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -503,19 +1023,51 @@ export default function BiteRevealPrototype() {
                           </div>
                         </div>
 
-                        <div className="flex min-h-56 items-center justify-center rounded-[1.75rem] border border-dashed border-slate-300 bg-white/70 p-8 text-center">
-                          <div className="max-w-md space-y-3">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
-                              <ScanLine className="h-5 w-5" />
-                            </div>
-                            <div className="text-lg font-semibold text-slate-900">
-                              Step 2 unlocks after analysis
-                            </div>
-                            <p className="text-sm leading-6 text-slate-500">
-                              Once the scan finishes, the UI switches to a dedicated
-                              result-details page.
-                            </p>
+                        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                            <History className="h-4 w-4 text-cyan-700" />
+                            Progress history
                           </div>
+                          <div className="mt-3 text-lg font-semibold text-slate-900">
+                            {scanHistory.length === 0
+                              ? 'No saved scans yet'
+                              : `${scanHistory.length} saved scan${scanHistory.length === 1 ? '' : 's'}`}
+                          </div>
+                          <p className="mt-1 text-sm leading-6 text-slate-500">
+                            Each completed analysis is saved here so users can reopen a scan and compare how the signal changes over time.
+                          </p>
+
+                          {scanHistory.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                              {scanHistory.slice(0, 3).map((entry) => (
+                                <button
+                                  key={entry.id}
+                                  type="button"
+                                  className="flex w-full items-center gap-3 rounded-[1rem] border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-cyan-300 hover:bg-cyan-50/50"
+                                  onClick={() => openHistoryScan(entry)}
+                                >
+                                  <img
+                                    src={entry.imageSrc}
+                                    alt="Saved scan"
+                                    className="h-14 w-14 rounded-xl object-cover"
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="truncate text-sm font-semibold text-slate-900">
+                                        Score {entry.scoreSummary.overall}
+                                      </div>
+                                      <Badge className="border-slate-200 bg-white text-slate-700">
+                                        {entry.source === 'demo' ? 'Demo' : 'Live'}
+                                      </Badge>
+                                    </div>
+                                    <div className="mt-1 text-sm text-slate-500">
+                                      {formatHistoryDate(entry.createdAt)}
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -527,309 +1079,640 @@ export default function BiteRevealPrototype() {
                       exit={{ opacity: 0, y: -8 }}
                       className="space-y-5"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-                        <div>
-                          <div className="text-sm font-medium text-slate-500">
-                            Step 2
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_340px]">
+                        <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.18),_transparent_35%),linear-gradient(135deg,#fefefe_0%,#f7fbff_55%,#eef7ff_100%)] p-5 shadow-sm md:p-6">
+                          <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div className="max-w-2xl">
+                              <div className="text-sm font-medium text-cyan-700">
+                                Step 2
+                              </div>
+                              <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                                What stands out first
+                              </div>
+                              <p className="mt-2 max-w-xl text-sm leading-7 text-slate-600">
+                                The strongest signal in this scan is{' '}
+                                <span className="font-semibold text-slate-900">
+                                  {leadInsight.title.toLowerCase()}
+                                </span>
+                                . The result view turns that into a few simple things
+                                people can notice quickly.
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap gap-3">
+                              <Badge className="border-slate-200 bg-white text-slate-700">
+                                Signal {scoreSummary.overall}/100
+                              </Badge>
+                              <Badge className={confidenceMeta.badgeClassName}>
+                                Confidence {activeResult.confidence}
+                              </Badge>
+                              <Button variant="outline" onClick={returnToUpload}>
+                                <ArrowLeft className="h-4 w-4" />
+                                Back to upload
+                              </Button>
+                              <Button variant="outline" onClick={resetDemo}>
+                                <RefreshCw className="h-4 w-4" />
+                                New scan
+                              </Button>
+                            </div>
                           </div>
-                          <div className="mt-1 text-lg font-semibold text-slate-900">
-                            Result details
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            Review one result section at a time on a focused page.
+
+                          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_280px]">
+                            <div className="rounded-[1.5rem] border border-white/80 bg-white/80 p-5 shadow-sm backdrop-blur">
+                              <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+                                <Radar className="h-4 w-4 text-cyan-600" />
+                                Quick read
+                              </div>
+                              <div className="mt-3 text-2xl font-semibold text-slate-950">
+                                {leadInsight.title}
+                              </div>
+                              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+                                {leadInsight.summary}
+                              </p>
+
+                              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                                {activeResult.currentVisibleCondition.focusPoints.map(
+                                  (point, index) => (
+                                    <div
+                                      key={point}
+                                      className="rounded-[1.2rem] border border-slate-200 bg-slate-50/90 p-4"
+                                    >
+                                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm font-semibold text-cyan-700 ring-1 ring-slate-200">
+                                        {index + 1}
+                                      </div>
+                                      <div className="mt-3 text-sm font-medium leading-6 text-slate-900">
+                                        {point}
+                                      </div>
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                              <div
+                                className={cn(
+                                  'rounded-[1.35rem] border p-4',
+                                  confidenceMeta.panelClassName,
+                                )}
+                              >
+                                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-slate-500">
+                                  <BarChart3 className="h-3.5 w-3.5" />
+                                  Real score
+                                </div>
+                                <div className="mt-2 text-2xl font-semibold text-slate-900">
+                                  {scoreSummary.overall}
+                                  <span className="ml-1 text-sm font-medium text-slate-500">
+                                    / 100
+                                  </span>
+                                </div>
+                                <div className="mt-1 text-sm text-slate-600">
+                                  {scoreSummary.label}
+                                </div>
+                                <div className="mt-3">
+                                  <ResultMeter
+                                    score={Math.max(1, Math.round(scoreSummary.overall / 34))}
+                                    activeClassName="bg-cyan-500 ring-cyan-500/40"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="rounded-[1.35rem] border border-rose-200 bg-rose-50/80 p-4">
+                                <div className="text-xs uppercase tracking-[0.18em] text-rose-500">
+                                  Biggest watch point
+                                </div>
+                                <div className="mt-2 text-base font-semibold text-slate-900">
+                                  {activeResult.futureRiskSnapshot.riskPoints[0]}
+                                </div>
+                              </div>
+
+                              <div className="rounded-[1.35rem] border border-cyan-200 bg-cyan-50/80 p-4">
+                                <div className="text-xs uppercase tracking-[0.18em] text-cyan-600">
+                                  Helpful next step
+                                </div>
+                                <div className="mt-2 text-base font-semibold text-slate-900">
+                                  Compare the current view with the future-risk page.
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-3">
-                          <Badge className="border-slate-200 bg-slate-100 text-slate-700">
-                            Confidence {(analysisResult ?? fallbackAnalysis).confidence}
-                          </Badge>
-                          <Button variant="outline" onClick={returnToUpload}>
-                            <ArrowLeft className="h-4 w-4" />
-                            Back to upload
-                          </Button>
-                          <Button variant="outline" onClick={resetDemo}>
-                            <RefreshCw className="h-4 w-4" />
-                            New scan
-                          </Button>
+
+                        <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+                          {activeResult.insights.map((insight, index) => {
+                            const severityMeta = getSeverityMeta(insight.severity)
+                            const SeverityIcon = severityMeta.icon
+
+                            return (
+                              <button
+                                key={insight.title}
+                                type="button"
+                                className={cn(
+                                  'rounded-[1.5rem] border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm',
+                                  selectedDetail?.type === 'insight' &&
+                                    selectedDetail.index === index
+                                    ? severityMeta.panelClassName
+                                    : 'border-slate-200 bg-white',
+                                )}
+                                onClick={() =>
+                                  setSelectedDetail({ type: 'insight', index })
+                                }
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-slate-900 ring-1 ring-slate-200">
+                                    <SeverityIcon className="h-4 w-4" />
+                                  </div>
+                                  <Badge className={severityMeta.badgeClassName}>
+                                    {insight.severity}
+                                  </Badge>
+                                </div>
+                                <div className="mt-4 text-base font-semibold text-slate-900">
+                                  {insight.title}
+                                </div>
+                                <p className="mt-2 text-sm leading-6 text-slate-600">
+                                  {insight.summary}
+                                </p>
+                                <div className="mt-4">
+                                  <ResultMeter
+                                    score={severityMeta.score}
+                                    activeClassName={severityMeta.dotClassName}
+                                  />
+                                </div>
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
 
-                      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-                            <Card className="rounded-[1.5rem] border-slate-200/80">
-                              <CardHeader className="pb-3">
-                                <CardTitle className="text-base">Detail pages</CardTitle>
+                      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+                        <Card className="rounded-[1.5rem] border-slate-200/80">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base">Explore the result</CardTitle>
+                            <CardDescription>
+                              Move through the pages in a simple story order.
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            <DetailNavCard
+                              title="What shows now"
+                              subtitle="See the visible alignment cues in the current photo."
+                              active={selectedDetail?.type === 'current'}
+                              onClick={() => setSelectedDetail({ type: 'current' })}
+                            />
+                            <DetailNavCard
+                              title="What could grow"
+                              subtitle="Preview how the same pattern might look later."
+                              active={selectedDetail?.type === 'future'}
+                              onClick={() => setSelectedDetail({ type: 'future' })}
+                            />
+
+                            {activeResult.insights.map((insight, index) => (
+                              <DetailNavCard
+                                key={insight.title}
+                                title={`${index + 1}. ${insight.title}`}
+                                subtitle={insight.summary}
+                                badge={insight.severity}
+                                active={
+                                  selectedDetail?.type === 'insight' &&
+                                  selectedDetail.index === index
+                                }
+                                onClick={() =>
+                                  setSelectedDetail({ type: 'insight', index })
+                                }
+                              />
+                            ))}
+                          </CardContent>
+                        </Card>
+
+                        <Card className="rounded-[1.5rem] border-slate-200/80 shadow-sm">
+                          <CardHeader className="border-b border-slate-100 bg-slate-50/70">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <CardTitle className="text-base">
+                                  {detailLabel || 'Easy-to-read overview'}
+                                </CardTitle>
                                 <CardDescription>
-                                  Open one section at a time for a clearer read.
+                                  Designed to help someone understand the issue at a glance.
                                 </CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
-                                <button
-                                  type="button"
-                                  className="w-full rounded-[1rem] border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-cyan-300 hover:bg-cyan-50"
-                                  onClick={() => setSelectedDetail({ type: 'current' })}
+                              </div>
+                              {selectedDetail && (
+                                <Button
+                                  variant="ghost"
+                                  className="rounded-full px-3"
+                                  onClick={() => setSelectedDetail(null)}
                                 >
-                                  <div className="text-sm font-semibold text-slate-900">
-                                    Current visible condition
-                                  </div>
-                                  <div className="mt-1 text-sm text-slate-500">
-                                    Present-day alignment impression
-                                  </div>
-                                </button>
+                                  <ArrowLeft className="h-4 w-4" />
+                                  Overview
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
 
-                                <button
-                                  type="button"
-                                  className="w-full rounded-[1rem] border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-cyan-300 hover:bg-cyan-50"
-                                  onClick={() => setSelectedDetail({ type: 'future' })}
-                                >
-                                  <div className="text-sm font-semibold text-slate-900">
-                                    Future risk snapshot
-                                  </div>
-                                  <div className="mt-1 text-sm text-slate-500">
-                                    Speculative projection if unchanged
-                                  </div>
-                                </button>
+                          <CardContent className="space-y-5 p-5 md:p-6">
+                            {analysisNotice && (
+                              <div className="rounded-[1.25rem] border border-cyan-200 bg-cyan-50/80 p-4 text-sm text-cyan-900">
+                                <div className="font-medium">Demo fallback active</div>
+                                <p className="mt-1 leading-6">{analysisNotice}</p>
+                              </div>
+                            )}
 
-                                {(analysisResult ?? fallbackAnalysis).insights.map((insight, index) => (
-                                  <button
-                                    key={insight.title}
-                                    type="button"
-                                    className="w-full rounded-[1rem] border border-slate-200 bg-white p-4 text-left transition hover:border-cyan-300 hover:bg-cyan-50/40"
-                                    onClick={() =>
-                                      setSelectedDetail({ type: 'insight', index })
-                                    }
-                                  >
-                                    <div className="flex items-center justify-between gap-3">
-                                      <div className="text-sm font-semibold text-slate-900">
-                                        {index + 1}. {insight.title}
+                            {!selectedDetail && (
+                              <div className="space-y-5">
+                                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+                                  <div className="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#eef7ff_100%)] p-5">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">
+                                      Plain-language summary
+                                    </div>
+                                    <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+                                      The current photo suggests a small but visible pattern worth watching.
+                                    </div>
+                                    <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                                      {activeResult.currentVisibleCondition.summary}
+                                    </p>
+
+                                    <div className="mt-5 grid gap-3 md:grid-cols-3">
+                                      <div className="rounded-[1.1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                          <Eye className="h-4 w-4 text-cyan-600" />
+                                          What shows now
+                                        </div>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                                          {activeResult.currentVisibleCondition.focusPoints[0]}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-[1.1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                          <TrendingUp className="h-4 w-4 text-rose-500" />
+                                          What could grow
+                                        </div>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                                          {activeResult.futureRiskSnapshot.riskPoints[0]}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-[1.1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
+                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                                          <Shield className="h-4 w-4 text-emerald-600" />
+                                          Why it helps
+                                        </div>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                                          Early visuals can make preventive action feel more real.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      Scoring summary
+                                    </div>
+                                    <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+                                      {scoreSummary.overall}
+                                      <span className="ml-1 text-base font-medium text-slate-500">
+                                        / 100
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                      {scoreSummary.action}
+                                    </p>
+                                    <div className="mt-4 space-y-3">
+                                      {scoreSummary.dimensions.map((dimension) => (
+                                        <div
+                                          key={dimension.label}
+                                          className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600"
+                                        >
+                                          <div className="flex items-center justify-between gap-3">
+                                            <div className="font-medium text-slate-900">
+                                              {dimension.label}
+                                            </div>
+                                            <div className="text-slate-500">
+                                              {dimension.score}
+                                            </div>
+                                          </div>
+                                          <div className="mt-2">
+                                            <ResultMeter
+                                              score={Math.max(
+                                                1,
+                                                Math.round(dimension.score / 34),
+                                              )}
+                                              activeClassName={dimension.toneClassName}
+                                            />
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {previousScan && historyDelta && (
+                                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                      <div>
+                                        <div className="text-sm font-semibold text-slate-900">
+                                          Progress history
+                                        </div>
+                                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                                          {historyDelta.detail}
+                                        </p>
                                       </div>
                                       <Badge className="border-slate-200 bg-slate-100 text-slate-700">
-                                        {insight.severity}
+                                        Previous score {previousScan.scoreSummary.overall}
                                       </Badge>
                                     </div>
-                                    <div className="mt-2 text-sm text-slate-500">
-                                      {insight.summary}
-                                    </div>
-                                  </button>
-                                ))}
-                              </CardContent>
-                            </Card>
 
-                            <Card className="rounded-[1.5rem] border-slate-200/80 shadow-sm">
-                              <CardHeader className="border-b border-slate-100 bg-slate-50/70">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                  <div>
-                                    <CardTitle className="text-base">
-                                      {detailLabel || 'Detailed review'}
-                                    </CardTitle>
-                                    <CardDescription>
-                                      Focus on one result section at a time.
-                                    </CardDescription>
+                                    <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                                      <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                          Previous saved scan
+                                        </div>
+                                        <div className="mt-2 text-base font-semibold text-slate-900">
+                                          {previousScan.scoreSummary.overall}/100
+                                        </div>
+                                        <div className="mt-1 text-sm text-slate-500">
+                                          {formatHistoryDate(previousScan.createdAt)}
+                                        </div>
+                                      </div>
+                                      <div className="rounded-[1rem] border border-cyan-200 bg-cyan-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">
+                                          Current scan
+                                        </div>
+                                        <div className="mt-2 text-base font-semibold text-slate-900">
+                                          {scoreSummary.overall}/100
+                                        </div>
+                                        <div className="mt-1 text-sm text-slate-500">
+                                          {historyDelta.title}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        variant="outline"
+                                        className="self-center"
+                                        onClick={() => openHistoryScan(previousScan)}
+                                      >
+                                        Open previous
+                                      </Button>
+                                    </div>
                                   </div>
-                                  {selectedDetail && (
-                                    <Button
-                                      variant="ghost"
-                                      className="rounded-full px-3"
-                                      onClick={() => setSelectedDetail(null)}
-                                    >
-                                      <ArrowLeft className="h-4 w-4" />
-                                      Overview
-                                    </Button>
-                                  )}
+                                )}
+
+                                <div className="grid gap-4 md:grid-cols-3">
+                                  {activeResult.insights.map((insight) => {
+                                    const severityMeta = getSeverityMeta(insight.severity)
+                                    const SeverityIcon = severityMeta.icon
+
+                                    return (
+                                      <div
+                                        key={insight.title}
+                                        className={cn(
+                                          'rounded-[1.35rem] border p-4',
+                                          severityMeta.panelClassName,
+                                        )}
+                                      >
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
+                                            <SeverityIcon className="h-4 w-4 text-slate-800" />
+                                          </div>
+                                          <Badge className={severityMeta.badgeClassName}>
+                                            {insight.severity}
+                                          </Badge>
+                                        </div>
+                                        <div className="mt-4 text-base font-semibold text-slate-900">
+                                          {insight.title}
+                                        </div>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                                          {insight.whyItMatters}
+                                        </p>
+                                      </div>
+                                    )
+                                  })}
                                 </div>
-                              </CardHeader>
+                              </div>
+                            )}
 
-                              <CardContent className="space-y-4 p-5 md:p-6">
-                                {analysisNotice && (
-                                  <div className="rounded-[1.25rem] border border-cyan-200 bg-cyan-50/80 p-4 text-sm text-cyan-900">
-                                    <div className="font-medium">Demo fallback active</div>
-                                    <p className="mt-1 leading-6">{analysisNotice}</p>
+                            {selectedDetail?.type === 'current' && (
+                              <div className="space-y-5">
+                                <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_320px]">
+                                  <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-100">
+                                    <img
+                                      src={uploadedImage ?? ''}
+                                      alt="Current visible condition"
+                                      className="h-full w-full object-cover"
+                                    />
+                                    <AnalysisOverlay active={true} />
                                   </div>
-                                )}
 
-                                {!selectedDetail && (
-                                  <div className="grid gap-4 md:grid-cols-2">
-                                    <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                                      <div className="text-sm font-semibold text-slate-900">
-                                        Two visual pages
-                                      </div>
-                                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                                        Break the preview into current condition
-                                        and future risk so each image gets more
-                                        room.
-                                      </p>
+                                  <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">
+                                      What this page is showing
                                     </div>
-                                    <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                                      <div className="text-sm font-semibold text-slate-900">
-                                        Three insight pages
-                                      </div>
-                                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                                        Open each insight separately instead of
-                                        stacking every explanation in one dense
-                                        list.
-                                      </p>
+                                    <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+                                      A simple view of what looks slightly off today
+                                    </div>
+                                    <p className="mt-3 text-sm leading-7 text-slate-600">
+                                      {activeResult.currentVisibleCondition.summary}
+                                    </p>
+
+                                    <div className="mt-5 space-y-3">
+                                      {activeResult.currentVisibleCondition.focusPoints.map(
+                                        (point, index) => (
+                                          <div
+                                            key={point}
+                                            className="rounded-[1rem] bg-white p-3 shadow-sm ring-1 ring-slate-200/80"
+                                          >
+                                            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                              Focus {index + 1}
+                                            </div>
+                                            <div className="mt-2 text-sm font-medium leading-6 text-slate-900">
+                                              {point}
+                                            </div>
+                                          </div>
+                                        ),
+                                      )}
                                     </div>
                                   </div>
-                                )}
+                                </div>
 
-                                {selectedDetail?.type === 'current' && (
-                                  <div className="space-y-5">
-                                    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-100">
-                                      <img
-                                        src={displayImage}
-                                        alt="Current visible condition"
-                                        className="h-full w-full object-cover"
-                                      />
-                                      <AnalysisOverlay active={true} />
+                                <div className="grid gap-4 md:grid-cols-3">
+                                  <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      Look for symmetry
                                     </div>
-                                    <div className="grid gap-3 md:grid-cols-3">
-                                      <div className="rounded-[1rem] bg-slate-50 p-4">
-                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                                          Visible now
-                                        </div>
-                                        <div className="mt-2 text-sm font-medium text-slate-900">
-                                          {
-                                            (analysisResult ?? fallbackAnalysis)
-                                              .currentVisibleCondition.focusPoints[0]
-                                          }
-                                        </div>
-                                      </div>
-                                      <div className="rounded-[1rem] bg-slate-50 p-4">
-                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                                          Scan focus
-                                        </div>
-                                        <div className="mt-2 text-sm font-medium text-slate-900">
-                                          {
-                                            (analysisResult ?? fallbackAnalysis)
-                                              .currentVisibleCondition.focusPoints[1]
-                                          }
-                                        </div>
-                                      </div>
-                                      <div className="rounded-[1rem] bg-slate-50 p-4">
-                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
-                                          Takeaway
-                                        </div>
-                                        <div className="mt-2 text-sm font-medium text-slate-900">
-                                          {
-                                            (analysisResult ?? fallbackAnalysis)
-                                              .currentVisibleCondition.focusPoints[2]
-                                          }
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <p className="text-sm leading-6 text-slate-600">
-                                      {
-                                        (analysisResult ?? fallbackAnalysis)
-                                          .currentVisibleCondition.summary
-                                      }
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                      Compare the left and right edges instead of focusing on one tooth.
                                     </p>
                                   </div>
-                                )}
+                                  <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      Notice the bite line
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                      Small tilt or uneven contact can be easier to spot when the scan guide is overlaid.
+                                    </p>
+                                  </div>
+                                  <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-sm">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      Keep the language light
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                      This page explains visible cues only, not a diagnosis.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
-                                {selectedDetail?.type === 'future' && (
-                                  <div className="space-y-5">
-                                    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-950">
-                                      <img
-                                        src={displayImage}
-                                        alt="Projected condition"
-                                        className="h-full w-full object-cover opacity-70 saturate-50"
-                                      />
-                                      <div className="absolute inset-0 bg-gradient-to-br from-rose-500/15 via-transparent to-amber-400/15" />
-                                      <div className="absolute inset-x-0 bottom-0 p-5">
-                                        <div className="rounded-[1rem] border border-white/15 bg-black/45 p-4 text-white backdrop-blur-sm">
+                            {selectedDetail?.type === 'future' && (
+                              <div className="space-y-5">
+                                <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_320px]">
+                                  <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-950">
+                                    <img
+                                      src={uploadedImage ?? ''}
+                                      alt="Projected condition"
+                                      className="h-full w-full object-cover opacity-70 saturate-50"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 via-transparent to-amber-400/20" />
+                                    <div className="absolute inset-x-0 bottom-0 p-5">
+                                      <div className="rounded-[1rem] border border-white/15 bg-black/45 p-4 text-white backdrop-blur-sm">
                                         <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">
-                                            {
-                                              (analysisResult ?? fallbackAnalysis)
-                                                .futureRiskSnapshot.projectionLabel
-                                            }
-                                          </div>
-                                          <div className="mt-2 text-sm leading-6 text-slate-100">
-                                            {
-                                              (analysisResult ?? fallbackAnalysis)
-                                                .futureRiskSnapshot.summary
-                                            }
-                                          </div>
+                                          {activeResult.futureRiskSnapshot.projectionLabel}
                                         </div>
-                                      </div>
-                                    </div>
-                                    <div className="grid gap-3 md:grid-cols-3">
-                                      <div className="rounded-[1rem] bg-rose-50 p-4">
-                                        <div className="text-xs uppercase tracking-[0.18em] text-rose-500">
-                                          Risk
-                                        </div>
-                                        <div className="mt-2 text-sm font-medium text-slate-900">
-                                          {
-                                            (analysisResult ?? fallbackAnalysis)
-                                              .futureRiskSnapshot.riskPoints[0]
-                                          }
-                                        </div>
-                                      </div>
-                                      <div className="rounded-[1rem] bg-amber-50 p-4">
-                                        <div className="text-xs uppercase tracking-[0.18em] text-amber-600">
-                                          Warning
-                                        </div>
-                                        <div className="mt-2 text-sm font-medium text-slate-900">
-                                          {
-                                            (analysisResult ?? fallbackAnalysis)
-                                              .futureRiskSnapshot.riskPoints[1]
-                                          }
-                                        </div>
-                                      </div>
-                                      <div className="rounded-[1rem] bg-cyan-50 p-4">
-                                        <div className="text-xs uppercase tracking-[0.18em] text-cyan-600">
-                                          Goal
-                                        </div>
-                                        <div className="mt-2 text-sm font-medium text-slate-900">
-                                          {
-                                            (analysisResult ?? fallbackAnalysis)
-                                              .futureRiskSnapshot.riskPoints[2]
-                                          }
+                                        <div className="mt-2 text-sm leading-6 text-slate-100">
+                                          {activeResult.futureRiskSnapshot.summary}
                                         </div>
                                       </div>
                                     </div>
                                   </div>
-                                )}
 
-                                {selectedInsight && (
-                                  <div className="space-y-5">
-                                    <div className="flex flex-wrap items-center gap-3">
-                                      <Badge className="border-slate-200 bg-slate-100 text-slate-700">
-                                        {selectedInsight.severity}
-                                      </Badge>
-                                      <div className="text-sm text-slate-500">
-                                        Insight detail page
-                                      </div>
+                                  <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50/80 p-5">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-rose-500">
+                                      Future view
                                     </div>
-                                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                                      <div className="text-xl font-semibold text-slate-900">
-                                        {selectedInsight.title}
-                                      </div>
-                                      <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                                        {selectedInsight.detail}
-                                      </p>
+                                    <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+                                      What may become easier to notice if nothing changes
                                     </div>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                      <div className="rounded-[1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
-                                        <div className="text-sm font-semibold text-slate-900">
-                                          What this page explains
-                                        </div>
-                                        <p className="mt-2 text-sm leading-6 text-slate-600">
-                                          {selectedInsight.summary}
-                                        </p>
-                                      </div>
-                                      <div className="rounded-[1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
-                                        <div className="text-sm font-semibold text-slate-900">
-                                          Why it matters
-                                        </div>
-                                        <p className="mt-2 text-sm leading-6 text-slate-600">
-                                          {selectedInsight.whyItMatters}
-                                        </p>
-                                      </div>
+                                    <div className="mt-5 space-y-3">
+                                      {activeResult.futureRiskSnapshot.riskPoints.map(
+                                        (point, index) => (
+                                          <div
+                                            key={point}
+                                            className="rounded-[1rem] bg-white/85 p-3 shadow-sm ring-1 ring-rose-100"
+                                          >
+                                            <div className="text-xs uppercase tracking-[0.18em] text-rose-500">
+                                              Watch {index + 1}
+                                            </div>
+                                            <div className="mt-2 text-sm font-medium leading-6 text-slate-900">
+                                              {point}
+                                            </div>
+                                          </div>
+                                        ),
+                                      )}
                                     </div>
                                   </div>
-                                )}
-                              </CardContent>
-                            </Card>
-                          </div>
+                                </div>
+
+                                <div className="grid gap-4 md:grid-cols-3">
+                                  <div className="rounded-[1.2rem] border border-rose-200 bg-rose-50 p-4">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      Risk signal
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                      {activeResult.futureRiskSnapshot.riskPoints[0]}
+                                    </p>
+                                  </div>
+                                  <div className="rounded-[1.2rem] border border-amber-200 bg-amber-50 p-4">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      Why it matters
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                      Visual future cues make prevention feel more urgent and real.
+                                    </p>
+                                  </div>
+                                  <div className="rounded-[1.2rem] border border-cyan-200 bg-cyan-50 p-4">
+                                    <div className="text-sm font-semibold text-slate-900">
+                                      Best use in a demo
+                                    </div>
+                                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                                      Use this screen to explain “why act early?” in one glance.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {selectedInsight && (
+                              <div className="space-y-5">
+                                {(() => {
+                                  const severityMeta = getSeverityMeta(
+                                    selectedInsight.severity,
+                                  )
+                                  const SeverityIcon = severityMeta.icon
+
+                                  return (
+                                    <>
+                                      <div
+                                        className={cn(
+                                          'rounded-[1.5rem] border p-5',
+                                          severityMeta.panelClassName,
+                                        )}
+                                      >
+                                        <div className="flex flex-wrap items-start justify-between gap-4">
+                                          <div className="max-w-2xl">
+                                            <div className="flex items-center gap-3">
+                                              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
+                                                <SeverityIcon className="h-5 w-5 text-slate-900" />
+                                              </div>
+                                              <Badge className={severityMeta.badgeClassName}>
+                                                {selectedInsight.severity}
+                                              </Badge>
+                                            </div>
+                                            <div className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">
+                                              {selectedInsight.title}
+                                            </div>
+                                            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                                              {selectedInsight.detail}
+                                            </p>
+                                          </div>
+
+                                          <div className="min-w-[170px] rounded-[1.1rem] bg-white/90 p-4 shadow-sm ring-1 ring-slate-200/80">
+                                            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                              Signal strength
+                                            </div>
+                                            <div className="mt-2 text-sm font-medium text-slate-900">
+                                              {selectedInsight.severity}
+                                            </div>
+                                            <div className="mt-3">
+                                              <ResultMeter
+                                                score={severityMeta.score}
+                                                activeClassName={severityMeta.dotClassName}
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="rounded-[1.2rem] border border-slate-200 bg-white p-5 shadow-sm">
+                                          <div className="text-sm font-semibold text-slate-900">
+                                            What a user can understand fast
+                                          </div>
+                                          <p className="mt-2 text-sm leading-7 text-slate-600">
+                                            {selectedInsight.summary}
+                                          </p>
+                                        </div>
+                                        <div className="rounded-[1.2rem] border border-slate-200 bg-white p-5 shadow-sm">
+                                          <div className="text-sm font-semibold text-slate-900">
+                                            Why this insight helps
+                                          </div>
+                                          <p className="mt-2 text-sm leading-7 text-slate-600">
+                                            {selectedInsight.whyItMatters}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </>
+                                  )
+                                })()}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -862,39 +1745,6 @@ export default function BiteRevealPrototype() {
                   <div className="text-sm font-medium text-cyan-200">Clear follow-up</div>
                   <p className="mt-1 text-sm leading-6 text-slate-100">
                     The result naturally points people toward professional care.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
-              <CardHeader>
-                <CardTitle>Next moves</CardTitle>
-                <CardDescription>Simple ways to sharpen the prototype.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="rounded-[1.25rem] bg-slate-50 p-4">
-                  <div className="text-sm font-medium text-slate-900">
-                    Guided photo capture
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Add framing and lighting hints for better inputs.
-                  </p>
-                </div>
-                <div className="rounded-[1.25rem] bg-slate-50 p-4">
-                  <div className="text-sm font-medium text-slate-900">
-                    Real scoring
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Swap the mock logic for a real analysis pipeline.
-                  </p>
-                </div>
-                <div className="rounded-[1.25rem] bg-slate-50 p-4">
-                  <div className="text-sm font-medium text-slate-900">
-                    Progress history
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Let users compare scans over time.
                   </p>
                 </div>
               </CardContent>
