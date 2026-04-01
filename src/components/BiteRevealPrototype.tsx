@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   Camera,
   Eye,
@@ -47,6 +48,11 @@ const sampleInsights = [
 const demoImage =
   'https://images.unsplash.com/photo-1588776814546-ec7e4e3a7d1a?q=80&w=1200&auto=format&fit=crop'
 
+type DetailView =
+  | { type: 'current' }
+  | { type: 'future' }
+  | { type: 'insight'; index: number }
+
 function AnalysisOverlay({ active }: { active: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.5rem]">
@@ -74,62 +80,13 @@ function AnalysisOverlay({ active }: { active: boolean }) {
   )
 }
 
-function FutureSnapshot({ imageSrc }: { imageSrc: string }) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Current visible condition</CardTitle>
-          <CardDescription>Present-day alignment impression</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-slate-100">
-            <img
-              src={imageSrc}
-              alt="Current visible condition"
-              className="h-full w-full object-cover"
-            />
-            <AnalysisOverlay active={true} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Future risk snapshot</CardTitle>
-          <CardDescription>Speculative projection if unchanged</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[1.25rem] bg-slate-950">
-            <img
-              src={imageSrc}
-              alt="Projected condition"
-              className="h-full w-full object-cover opacity-70 saturate-50"
-            />
-            <div className="absolute inset-0 bg-gradient-to-br from-rose-500/15 via-transparent to-amber-400/15" />
-            <div className="absolute inset-x-0 bottom-0 p-4">
-              <div className="rounded-[1rem] border border-white/15 bg-black/40 p-3 text-white backdrop-blur-sm">
-                <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">
-                  3-year projection
-                </div>
-                <div className="mt-1 text-sm">
-                  Slight worsening of asymmetry and potential edge wear.
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
 export default function BiteRevealPrototype() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [hasAnalyzed, setHasAnalyzed] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [selectedDetail, setSelectedDetail] = useState<DetailView | null>(null)
 
   const displayImage = uploadedImage || demoImage
 
@@ -147,6 +104,7 @@ export default function BiteRevealPrototype() {
       setUploadedImage(String(reader.result))
       setHasAnalyzed(false)
       setProgress(0)
+      setSelectedDetail(null)
     }
     reader.readAsDataURL(file)
   }
@@ -164,6 +122,7 @@ export default function BiteRevealPrototype() {
 
     setAnalyzing(false)
     setHasAnalyzed(true)
+    setSelectedDetail({ type: 'current' })
   }
 
   const resetDemo = () => {
@@ -171,8 +130,21 @@ export default function BiteRevealPrototype() {
     setAnalyzing(false)
     setHasAnalyzed(false)
     setProgress(0)
+    setSelectedDetail(null)
     if (inputRef.current) inputRef.current.value = ''
   }
+
+  const selectedInsight =
+    selectedDetail?.type === 'insight'
+      ? sampleInsights[selectedDetail.index]
+      : null
+
+  const detailLabel =
+    selectedDetail?.type === 'current'
+      ? 'Current visible condition'
+      : selectedDetail?.type === 'future'
+        ? 'Future risk snapshot'
+        : selectedInsight?.title
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_30%),linear-gradient(180deg,#f8fbff_0%,#f6f7fb_100%)] text-slate-900">
@@ -200,8 +172,10 @@ export default function BiteRevealPrototype() {
 
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
-                <CardContent className="p-5">
-                  <Eye className="mb-3 h-5 w-5" />
+                <CardContent className="p-6">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                    <Eye className="h-5 w-5" />
+                  </div>
                   <div className="text-sm font-medium">Spot hidden patterns</div>
                   <div className="mt-1 text-sm text-slate-500">
                     Turn subtle issues into visuals people understand fast.
@@ -209,8 +183,10 @@ export default function BiteRevealPrototype() {
                 </CardContent>
               </Card>
               <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
-                <CardContent className="p-5">
-                  <Shield className="mb-3 h-5 w-5" />
+                <CardContent className="p-6">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                    <Shield className="h-5 w-5" />
+                  </div>
                   <div className="text-sm font-medium">Encourage early action</div>
                   <div className="mt-1 text-sm text-slate-500">
                     Create a reason to check in before pain shows up.
@@ -218,8 +194,10 @@ export default function BiteRevealPrototype() {
                 </CardContent>
               </Card>
               <Card className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
-                <CardContent className="p-5">
-                  <Sparkles className="mb-3 h-5 w-5" />
+                <CardContent className="p-6">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
                   <div className="text-sm font-medium">Keep it approachable</div>
                   <div className="mt-1 text-sm text-slate-500">
                     Use clear storytelling instead of heavy technical language.
@@ -369,25 +347,250 @@ export default function BiteRevealPrototype() {
                           exit={{ opacity: 0, y: 8 }}
                           className="space-y-4"
                         >
-                          <FutureSnapshot imageSrc={displayImage} />
-                          <div className="grid gap-4">
-                            {sampleInsights.map((insight, index) => (
-                              <Card key={insight.title} className="rounded-[1.5rem]">
-                                <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-start md:justify-between">
-                                  <div>
-                                    <div className="text-base font-semibold text-slate-900">
-                                      {index + 1}. {insight.title}
-                                    </div>
-                                    <p className="mt-1 text-sm leading-6 text-slate-600">
-                                      {insight.description}
-                                    </p>
+                          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+                            <Card className="rounded-[1.5rem] border-slate-200/80">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-base">Detail pages</CardTitle>
+                                <CardDescription>
+                                  Open one section at a time for a clearer read.
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                <button
+                                  type="button"
+                                  className="w-full rounded-[1rem] border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-cyan-300 hover:bg-cyan-50"
+                                  onClick={() => setSelectedDetail({ type: 'current' })}
+                                >
+                                  <div className="text-sm font-semibold text-slate-900">
+                                    Current visible condition
                                   </div>
-                                  <Badge className="border-slate-200 bg-slate-100 text-slate-700">
-                                    {insight.severity}
-                                  </Badge>
-                                </CardContent>
-                              </Card>
-                            ))}
+                                  <div className="mt-1 text-sm text-slate-500">
+                                    Present-day alignment impression
+                                  </div>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="w-full rounded-[1rem] border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-cyan-300 hover:bg-cyan-50"
+                                  onClick={() => setSelectedDetail({ type: 'future' })}
+                                >
+                                  <div className="text-sm font-semibold text-slate-900">
+                                    Future risk snapshot
+                                  </div>
+                                  <div className="mt-1 text-sm text-slate-500">
+                                    Speculative projection if unchanged
+                                  </div>
+                                </button>
+
+                                {sampleInsights.map((insight, index) => (
+                                  <button
+                                    key={insight.title}
+                                    type="button"
+                                    className="w-full rounded-[1rem] border border-slate-200 bg-white p-4 text-left transition hover:border-cyan-300 hover:bg-cyan-50/40"
+                                    onClick={() =>
+                                      setSelectedDetail({ type: 'insight', index })
+                                    }
+                                  >
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="text-sm font-semibold text-slate-900">
+                                        {index + 1}. {insight.title}
+                                      </div>
+                                      <Badge className="border-slate-200 bg-slate-100 text-slate-700">
+                                        {insight.severity}
+                                      </Badge>
+                                    </div>
+                                    <div className="mt-2 text-sm text-slate-500">
+                                      Open a more detailed view
+                                    </div>
+                                  </button>
+                                ))}
+                              </CardContent>
+                            </Card>
+
+                            <Card className="rounded-[1.5rem] border-slate-200/80 shadow-sm">
+                              <CardHeader className="border-b border-slate-100 bg-slate-50/70">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <div>
+                                    <CardTitle className="text-base">
+                                      {detailLabel || 'Detailed review'}
+                                    </CardTitle>
+                                    <CardDescription>
+                                      Focus on one result section at a time.
+                                    </CardDescription>
+                                  </div>
+                                  {selectedDetail && (
+                                    <Button
+                                      variant="ghost"
+                                      className="rounded-full px-3"
+                                      onClick={() => setSelectedDetail(null)}
+                                    >
+                                      <ArrowLeft className="h-4 w-4" />
+                                      Overview
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardHeader>
+
+                              <CardContent className="p-5 md:p-6">
+                                {!selectedDetail && (
+                                  <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                                      <div className="text-sm font-semibold text-slate-900">
+                                        Two visual pages
+                                      </div>
+                                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                                        Break the preview into current condition
+                                        and future risk so each image gets more
+                                        room.
+                                      </p>
+                                    </div>
+                                    <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                                      <div className="text-sm font-semibold text-slate-900">
+                                        Three insight pages
+                                      </div>
+                                      <p className="mt-2 text-sm leading-6 text-slate-600">
+                                        Open each insight separately instead of
+                                        stacking every explanation in one dense
+                                        list.
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedDetail?.type === 'current' && (
+                                  <div className="space-y-5">
+                                    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-100">
+                                      <img
+                                        src={displayImage}
+                                        alt="Current visible condition"
+                                        className="h-full w-full object-cover"
+                                      />
+                                      <AnalysisOverlay active={true} />
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                      <div className="rounded-[1rem] bg-slate-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                          Visible now
+                                        </div>
+                                        <div className="mt-2 text-sm font-medium text-slate-900">
+                                          Small asymmetry cues
+                                        </div>
+                                      </div>
+                                      <div className="rounded-[1rem] bg-slate-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                          Scan focus
+                                        </div>
+                                        <div className="mt-2 text-sm font-medium text-slate-900">
+                                          Tooth edge alignment and center balance
+                                        </div>
+                                      </div>
+                                      <div className="rounded-[1rem] bg-slate-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">
+                                          Takeaway
+                                        </div>
+                                        <div className="mt-2 text-sm font-medium text-slate-900">
+                                          Early shift may already be visible
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedDetail?.type === 'future' && (
+                                  <div className="space-y-5">
+                                    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-950">
+                                      <img
+                                        src={displayImage}
+                                        alt="Projected condition"
+                                        className="h-full w-full object-cover opacity-70 saturate-50"
+                                      />
+                                      <div className="absolute inset-0 bg-gradient-to-br from-rose-500/15 via-transparent to-amber-400/15" />
+                                      <div className="absolute inset-x-0 bottom-0 p-5">
+                                        <div className="rounded-[1rem] border border-white/15 bg-black/45 p-4 text-white backdrop-blur-sm">
+                                          <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">
+                                            3-year projection
+                                          </div>
+                                          <div className="mt-2 text-sm leading-6 text-slate-100">
+                                            Slight worsening of asymmetry and
+                                            potential edge wear if nothing
+                                            changes.
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                      <div className="rounded-[1rem] bg-rose-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-rose-500">
+                                          Risk
+                                        </div>
+                                        <div className="mt-2 text-sm font-medium text-slate-900">
+                                          Uneven contact can become more obvious
+                                        </div>
+                                      </div>
+                                      <div className="rounded-[1rem] bg-amber-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-amber-600">
+                                          Warning
+                                        </div>
+                                        <div className="mt-2 text-sm font-medium text-slate-900">
+                                          Wear may show earlier on front edges
+                                        </div>
+                                      </div>
+                                      <div className="rounded-[1rem] bg-cyan-50 p-4">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-cyan-600">
+                                          Goal
+                                        </div>
+                                        <div className="mt-2 text-sm font-medium text-slate-900">
+                                          Make future impact feel immediate
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedInsight && (
+                                  <div className="space-y-5">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <Badge className="border-slate-200 bg-slate-100 text-slate-700">
+                                        {selectedInsight.severity}
+                                      </Badge>
+                                      <div className="text-sm text-slate-500">
+                                        Insight detail page
+                                      </div>
+                                    </div>
+                                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                                      <div className="text-xl font-semibold text-slate-900">
+                                        {selectedInsight.title}
+                                      </div>
+                                      <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                                        {selectedInsight.description}
+                                      </p>
+                                    </div>
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                      <div className="rounded-[1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
+                                        <div className="text-sm font-semibold text-slate-900">
+                                          What this page explains
+                                        </div>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                                          This section zooms in on one pattern so
+                                          the user can understand the signal
+                                          without reading every result at once.
+                                        </p>
+                                      </div>
+                                      <div className="rounded-[1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
+                                        <div className="text-sm font-semibold text-slate-900">
+                                          Why it matters
+                                        </div>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                                          Breaking each insight into its own page
+                                          makes the analysis feel calmer, more
+                                          guided, and easier to act on.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
                           </div>
                         </motion.div>
                       ) : (
