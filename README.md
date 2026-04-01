@@ -10,7 +10,7 @@ npm run dev
 ## Local UI + API
 
 1. Copy `.env.example` to `.env`
-2. Add your `OPENAI_API_KEY`
+2. Add your `GEMINI_API_KEY`
 3. Run:
 
 ```bash
@@ -28,7 +28,7 @@ The frontend calls `POST /api/analyze`, which proxies to the local API in develo
 - GitHub Pages can host the frontend, but not the backend API route.
 - To deploy `/api/analyze`, use a server host such as Vercel, Render, Railway, or another Node-compatible platform.
 - For a separately deployed API, rebuild the frontend with `VITE_API_BASE_URL=https://your-api-host`.
-- The backend uses the OpenAI Responses API with image input and structured JSON output.
+- The backend is set up for the Gemini API free tier by default and keeps the same JSON contract for the frontend.
 
 ## Make GitHub Pages analysis work
 
@@ -37,7 +37,7 @@ Recommended path: deploy the backend on Render.
 1. Push this repo to GitHub.
 2. In Render, create a new `Web Service` from the GitHub repo.
 3. Render will detect `render.yaml`.
-4. Set `OPENAI_API_KEY` in Render.
+4. Set `GEMINI_API_KEY` in Render.
 5. Deploy and copy your backend URL, for example:
 
 ```text
@@ -55,6 +55,22 @@ VITE_API_BASE_URL=https://bitereveal-api.onrender.com
 8. Push a new frontend commit so GitHub Pages rebuilds with that API URL.
 
 After that, the frontend at `https://elaine2003101.github.io/bitereveal/` will call the deployed backend instead of `/api` on GitHub Pages.
+
+## Gemini setup
+
+Get a Gemini API key from Google AI Studio and use the free tier:
+- Billing and free tier: https://ai.google.dev/gemini-api/docs/billing/
+- Image understanding: https://ai.google.dev/gemini-api/docs/image-understanding
+- Node quickstart: https://ai.google.dev/gemini-api/docs/quickstart?lang=node
+
+Recommended Render env vars:
+
+```text
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.0-flash
+ALLOWED_ORIGINS=https://elaine2003101.github.io,http://localhost:5173
+```
 
 Currently, two official plugins are available:
 

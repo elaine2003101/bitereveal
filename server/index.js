@@ -2,10 +2,11 @@ import 'dotenv/config'
 
 import cors from 'cors'
 import express from 'express'
-import OpenAI from 'openai'
 
 const app = express()
 const port = Number(process.env.PORT || 8787)
+const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
 
 const allowedOrigins = (
   process.env.ALLOWED_ORIGINS ||
@@ -101,12 +102,46 @@ const ANALYSIS_SCHEMA = {
   },
 }
 
-function getClient() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('Missing OPENAI_API_KEY')
+function getProvider() {
+  const explicitProvider = process.env.AI_PROVIDER?.trim().toLowerCase()
+
+  if (explicitProvider === 'gemini') {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('Missing GEMINI_API_KEY')
+    }
+
+    return {
+      name: 'gemini',
+      model: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+    }
   }
 
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  if (explicitProvider === 'openai') {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('Missing OPENAI_API_KEY')
+    }
+
+    return {
+      name: 'openai',
+      model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL,
+    }
+  }
+
+  if (process.env.GEMINI_API_KEY) {
+    return {
+      name: 'gemini',
+      model: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+    }
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      name: 'openai',
+      model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL,
+    }
+  }
+
+  throw new Error('Missing AI provider credentials')
 }
 
 function isSupportedImageReference(value) {
@@ -118,11 +153,120 @@ function isSupportedImageReference(value) {
   )
 }
 
+function parseDataUrlImage(value) {
+  const match = value.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/)
+
+  if (!match) {
+    throw new Error('Please upload a JPG or PNG image as a valid base64 data URL.')
+  }
+
+  return {
+    mimeType: match[1],
+    data: match[2],
+  }
+}
+
+async function resolveImageForGemini(imageReference) {
+  if (imageReference.startsWith('data:image/')) {
+    return parseDataUrlImage(imageReference)
+  }
+
+  const imageResponse = await fetch(imageReference)
+
+  if (!imageResponse.ok) {
+    throw new Error('Could not download the selected image for analysis.')
+  }
+
+  const mimeType = imageResponse.headers.get('content-type')?.split(';')[0]?.trim()
+
+  if (!mimeType || !mimeType.startsWith('image/')) {
+    throw new Error('The selected file is not a supported image.')
+  }
+
+  const arrayBuffer = await imageResponse.arrayBuffer()
+
+  return {
+    mimeType,
+    data: Buffer.from(arrayBuffer).toString('base64'),
+  }
+}
+
+async function analyzeWithGemini({ imageDataUrl, model }) {
+  const { mimeType, data } = await resolveImageForGemini(imageDataUrl)
+
+  const geminiResponse = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [
+            {
+              text:
+                'You are assisting a non-diagnostic bite-awareness prototype. Analyze only visible cues from the image. Do not claim medical certainty. Keep the language concise, plain, and user-friendly.',
+            },
+          ],
+        },
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text:
+                  'Review this teeth or smile photo. Return concise JSON for a prototype UI. Focus on visible bite alignment, possible wear cues, and crowding tendency. Keep results cautious and non-diagnostic.',
+              },
+              {
+                inlineData: {
+                  mimeType,
+                  data,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseJsonSchema: ANALYSIS_SCHEMA.schema,
+        },
+      }),
+    },
+  )
+
+  const payload = await geminiResponse.json()
+
+  if (!geminiResponse.ok) {
+    throw new Error(payload?.error?.message || 'Gemini analysis failed.')
+  }
+
+  const outputText = payload?.candidates
+    ?.flatMap((candidate) => candidate.content?.parts || [])
+    ?.map((part) => part.text)
+    ?.find(Boolean)
+
+  if (!outputText) {
+    throw new Error('Gemini returned no structured output text.')
+  }
+
+  return JSON.parse(outputText)
+}
+
 app.get('/api/health', (_request, response) => {
+  const provider =
+    process.env.AI_PROVIDER?.trim().toLowerCase() ||
+    (process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENAI_API_KEY ? 'openai' : null)
+
   response.json({
     ok: true,
+    provider,
+    hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
     hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model:
+      provider === 'openai'
+        ? process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL
+        : process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
   })
 })
 
@@ -138,56 +282,36 @@ app.post('/api/analyze', async (request, response) => {
       return
     }
 
-    const client = getClient()
+    const provider = getProvider()
 
-    const result = await client.responses.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      input: [
-        {
-          role: 'system',
-          content: [
-            {
-              type: 'input_text',
-              text:
-                'You are assisting a non-diagnostic bite-awareness prototype. Analyze only visible cues from the image. Do not claim medical certainty. Keep the language concise, plain, and user-friendly.',
-            },
-          ],
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'input_text',
-              text:
-                'Review this teeth or smile photo. Return concise JSON for a prototype UI. Focus on visible bite alignment, possible wear cues, and crowding tendency. Keep results cautious and non-diagnostic.',
-            },
-            {
-              type: 'input_image',
-              image_url: imageDataUrl,
-            },
-          ],
-        },
-      ],
-      text: {
-        format: {
-          type: 'json_schema',
-          ...ANALYSIS_SCHEMA,
-        },
-      },
-    })
-
-    if (!result.output_text) {
-      throw new Error('OpenAI returned no structured output text.')
+    if (provider.name !== 'gemini') {
+      response.status(503).json({
+        error:
+          'This deployment is currently configured for Gemini. Switch AI_PROVIDER to gemini and set GEMINI_API_KEY.',
+      })
+      return
     }
 
-    response.json(JSON.parse(result.output_text))
+    const result = await analyzeWithGemini({
+      imageDataUrl,
+      model: provider.model,
+    })
+
+    response.json(result)
   } catch (error) {
     console.error('Analyze route failed:', error)
 
     const message =
       error instanceof Error ? error.message : 'Unknown analysis error'
 
-    response.status(500).json({
+    const statusCode =
+      message.includes('Please upload') ||
+      message.includes('supported image') ||
+      message.includes('Could not download')
+        ? 400
+        : 500
+
+    response.status(statusCode).json({
       error: message,
     })
   }
