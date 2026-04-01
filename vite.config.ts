@@ -5,4 +5,9 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base: process.env.BASE_PATH || '/bitereveal/',
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/api': 'http://localhost:8787',
+    },
+  },
 })

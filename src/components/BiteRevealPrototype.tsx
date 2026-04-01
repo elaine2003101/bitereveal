@@ -24,26 +24,87 @@ import {
 } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 
-const sampleInsights = [
-  {
-    title: 'Minor bite asymmetry',
-    severity: 'Early',
-    description:
-      'Slight left-right imbalance detected from visible tooth alignment cues.',
+type AnalysisInsight = {
+  title: string
+  severity: string
+  summary: string
+  detail: string
+  whyItMatters: string
+}
+
+type AnalysisResult = {
+  confidence: 'low' | 'medium' | 'high'
+  currentVisibleCondition: {
+    title: string
+    summary: string
+    focusPoints: string[]
+  }
+  futureRiskSnapshot: {
+    title: string
+    projectionLabel: string
+    summary: string
+    riskPoints: string[]
+  }
+  insights: AnalysisInsight[]
+  disclaimer: string
+}
+
+const fallbackAnalysis: AnalysisResult = {
+  confidence: 'medium',
+  currentVisibleCondition: {
+    title: 'Current visible condition',
+    summary: 'Mild asymmetry cues may already be visible from the front view.',
+    focusPoints: [
+      'Small midline imbalance',
+      'Visible tooth-edge alignment differences',
+      'Early shift may already be noticeable',
+    ],
   },
-  {
-    title: 'Potential uneven wear',
-    severity: 'Watch',
-    description:
-      'Front teeth edges may be experiencing uneven contact over time.',
+  futureRiskSnapshot: {
+    title: 'Future risk snapshot',
+    projectionLabel: '3-year projection',
+    summary:
+      'If unchanged, asymmetry and uneven contact may become more visible over time.',
+    riskPoints: [
+      'Uneven contact may become more obvious',
+      'Front edge wear may show earlier',
+      'Future impact becomes easier to notice visually',
+    ],
   },
-  {
-    title: 'Crowding tendency',
-    severity: 'Low',
-    description:
-      'Mild overlap patterns suggest possible future alignment shift.',
-  },
-]
+  insights: [
+    {
+      title: 'Minor bite asymmetry',
+      severity: 'Early',
+      summary:
+        'Slight left-right imbalance detected from visible tooth alignment cues.',
+      detail:
+        'The visible center balance appears slightly off, which can be a useful early visual flag in a screening-style experience.',
+      whyItMatters:
+        'Showing this clearly helps users understand the idea of subtle bite imbalance before symptoms become obvious.',
+    },
+    {
+      title: 'Potential uneven wear',
+      severity: 'Watch',
+      summary:
+        'Front teeth edges may be experiencing uneven contact over time.',
+      detail:
+        'The front edge line suggests contact may not be evenly distributed, which is worth surfacing as a watch item.',
+      whyItMatters:
+        'Wear risk is a strong educational cue because it connects a visible image to a possible long-term effect.',
+    },
+    {
+      title: 'Crowding tendency',
+      severity: 'Low',
+      summary:
+        'Mild overlap patterns suggest possible future alignment shift.',
+      detail:
+        'Small overlap cues can make the result feel more forward-looking without overstating certainty.',
+      whyItMatters:
+        'This gives the prototype a gentler, lower-severity insight that rounds out the overall result set.',
+    },
+  ],
+  disclaimer: 'Demo only. This is a concept view, not a diagnosis.',
+}
 
 const demoImage =
   'https://images.unsplash.com/photo-1588776814546-ec7e4e3a7d1a?q=80&w=1200&auto=format&fit=crop'
@@ -87,8 +148,11 @@ export default function BiteRevealPrototype() {
   const [hasAnalyzed, setHasAnalyzed] = useState(false)
   const [progress, setProgress] = useState(0)
   const [selectedDetail, setSelectedDetail] = useState<DetailView | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
 
   const displayImage = uploadedImage || demoImage
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || ''
 
   const readiness = useMemo(() => {
     if (!uploadedImage) return 20
@@ -105,24 +169,61 @@ export default function BiteRevealPrototype() {
       setHasAnalyzed(false)
       setProgress(0)
       setSelectedDetail(null)
+      setAnalysisResult(null)
+      setAnalysisError(null)
     }
     reader.readAsDataURL(file)
   }
 
   const runAnalysis = async () => {
-    setAnalyzing(true)
-    setHasAnalyzed(false)
-    setProgress(8)
+    try {
+      setAnalyzing(true)
+      setHasAnalyzed(false)
+      setProgress(8)
+      setAnalysisError(null)
 
-    const steps = [22, 39, 57, 76, 92, 100]
-    for (const step of steps) {
-      await new Promise((resolve) => setTimeout(resolve, 280))
-      setProgress(step)
+      const analysisPromise = fetch(`${apiBaseUrl}/api/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageDataUrl: displayImage,
+        }),
+      })
+
+      const steps = [22, 39, 57, 76, 92]
+      for (const step of steps) {
+        await new Promise((resolve) => setTimeout(resolve, 240))
+        setProgress(step)
+      }
+
+      const response = await analysisPromise
+      const payload = (await response.json()) as AnalysisResult | { error: string }
+
+      if (!response.ok || 'error' in payload) {
+        throw new Error(
+          'error' in payload ? payload.error : 'Analysis request failed.',
+        )
+      }
+
+      setAnalysisResult(payload)
+      setProgress(100)
+      setHasAnalyzed(true)
+      setSelectedDetail({ type: 'current' })
+    } catch (error) {
+      setProgress(0)
+      setHasAnalyzed(false)
+      setSelectedDetail(null)
+      setAnalysisResult(null)
+      setAnalysisError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to analyze the image right now.',
+      )
+    } finally {
+      setAnalyzing(false)
     }
-
-    setAnalyzing(false)
-    setHasAnalyzed(true)
-    setSelectedDetail({ type: 'current' })
   }
 
   const resetDemo = () => {
@@ -131,12 +232,20 @@ export default function BiteRevealPrototype() {
     setHasAnalyzed(false)
     setProgress(0)
     setSelectedDetail(null)
+    setAnalysisResult(null)
+    setAnalysisError(null)
     if (inputRef.current) inputRef.current.value = ''
+  }
+
+  const returnToUpload = () => {
+    setHasAnalyzed(false)
+    setSelectedDetail(null)
+    setProgress(uploadedImage ? 55 : 20)
   }
 
   const selectedInsight =
     selectedDetail?.type === 'insight'
-      ? sampleInsights[selectedDetail.index]
+      ? (analysisResult ?? fallbackAnalysis).insights[selectedDetail.index]
       : null
 
   const detailLabel =
@@ -211,7 +320,11 @@ export default function BiteRevealPrototype() {
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <ScanLine className="h-5 w-5" /> Prototype demo
                 </CardTitle>
-                <CardDescription>Upload, reveal, preview.</CardDescription>
+                <CardDescription>
+                  {!hasAnalyzed
+                    ? 'Step 1: upload and run the demo.'
+                    : 'Step 2: review focused result details.'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 p-5 md:p-7">
                 <input
@@ -222,132 +335,190 @@ export default function BiteRevealPrototype() {
                   onChange={(event) => onUpload(event.target.files?.[0])}
                 />
 
-                <div className="grid items-start gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-                  <div className="space-y-4">
-                    <button
-                      type="button"
-                      className="group relative flex aspect-[4/3] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-slate-300 bg-white text-left transition hover:border-cyan-300 hover:bg-cyan-50/40"
-                      onClick={() => inputRef.current?.click()}
+                <AnimatePresence mode="wait" initial={false}>
+                  {!hasAnalyzed ? (
+                    <motion.div
+                      key="upload-step"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="grid items-start gap-6 xl:grid-cols-[0.88fr_1.12fr]"
                     >
-                      <img
-                        src={displayImage}
-                        alt="Teeth input demo"
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
-                      <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-slate-700 backdrop-blur">
-                        {uploadedImage ? 'Source image loaded' : 'Demo image loaded'}
-                      </div>
-                      <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-slate-950/80 px-3 py-1 text-xs font-medium text-white backdrop-blur">
-                        <Upload className="h-3.5 w-3.5" />
-                        Click to choose a smile photo
-                      </div>
-                    </button>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <Button
-                        className="h-11 rounded-[1rem]"
-                        variant="outline"
-                        onClick={() => inputRef.current?.click()}
-                      >
-                        <Camera className="h-4 w-4" /> Choose Image
-                      </Button>
-                      <Button
-                        className="h-11 rounded-[1rem]"
-                        variant="outline"
-                        onClick={resetDemo}
-                      >
-                        <RefreshCw className="h-4 w-4" /> Reset
-                      </Button>
-                    </div>
-
-                    <div className="space-y-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">Prototype readiness</span>
-                        <span className="text-slate-500">{readiness}%</span>
-                      </div>
-                      <Progress value={readiness} />
-                      <div className="text-sm text-slate-500">
-                        Upload a photo and run the demo to unlock the preview.
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-medium text-slate-900">
-                            Visual scan simulation
+                      <div className="space-y-4">
+                        <button
+                          type="button"
+                          className="group relative flex aspect-[4/3] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-slate-300 bg-white text-left transition hover:border-cyan-300 hover:bg-cyan-50/40"
+                          onClick={() => inputRef.current?.click()}
+                        >
+                          <img
+                            src={displayImage}
+                            alt="Teeth input demo"
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+                          <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-slate-700 backdrop-blur">
+                            {uploadedImage ? 'Source image loaded' : 'Demo image loaded'}
                           </div>
+                          <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-slate-950/80 px-3 py-1 text-xs font-medium text-white backdrop-blur">
+                            <Upload className="h-3.5 w-3.5" />
+                            Click to choose a smile photo
+                          </div>
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <Button
+                            className="h-11 rounded-[1rem]"
+                            variant="outline"
+                            onClick={() => inputRef.current?.click()}
+                          >
+                            <Camera className="h-4 w-4" /> Choose Image
+                          </Button>
+                          <Button
+                            className="h-11 rounded-[1rem]"
+                            variant="outline"
+                            onClick={resetDemo}
+                          >
+                            <RefreshCw className="h-4 w-4" /> Reset
+                          </Button>
+                        </div>
+
+                        <div className="space-y-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">Prototype readiness</span>
+                            <span className="text-slate-500">{readiness}%</span>
+                          </div>
+                          <Progress value={readiness} />
                           <div className="text-sm text-slate-500">
-                            Quick concept preview
+                            Upload a photo and run the demo to unlock the results page.
                           </div>
                         </div>
-                        <Button
-                          className="min-w-[11rem]"
-                          onClick={runAnalysis}
-                          disabled={analyzing}
-                        >
-                          {analyzing ? (
-                            <>
-                              <RefreshCw className="h-4 w-4 animate-spin" />
-                              Analyzing...
-                            </>
-                          ) : (
-                            <>
-                              Reveal insights
-                              <ArrowRight className="h-4 w-4" />
-                            </>
-                          )}
-                        </Button>
                       </div>
 
-                      <AnimatePresence initial={false}>
-                        {(analyzing || hasAnalyzed) && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="mt-4 space-y-3">
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-slate-500">
-                                  {analyzing
-                                    ? 'Analyzing visible bite signals...'
-                                    : 'Concept analysis completed'}
-                                </span>
-                                <span className="font-medium text-slate-700">
-                                  {progress}%
-                                </span>
+                      <div className="space-y-4">
+                        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-medium text-slate-900">
+                                Step 1
                               </div>
-                              <Progress value={progress} />
+                              <div className="mt-1 text-lg font-semibold text-slate-900">
+                                Reveal the analysis
+                              </div>
+                              <div className="mt-1 text-sm text-slate-500">
+                                This first page is just for upload and scan.
+                              </div>
                             </div>
-                          </motion.div>
+                            <Button
+                              className="min-w-[11rem]"
+                              onClick={runAnalysis}
+                              disabled={analyzing}
+                            >
+                              {analyzing ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                  Analyzing...
+                                </>
+                              ) : (
+                                <>
+                                  See result page
+                                  <ArrowRight className="h-4 w-4" />
+                                </>
+                              )}
+                            </Button>
+                          </div>
+
+                          <AnimatePresence initial={false}>
+                            {analyzing && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="mt-5 space-y-3">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-slate-500">
+                                      Analyzing visible bite signals...
+                                    </span>
+                                    <span className="font-medium text-slate-700">
+                                      {progress}%
+                                    </span>
+                                  </div>
+                                  <Progress value={progress} />
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {analysisError && (
+                          <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                            <div className="font-medium">Analysis failed</div>
+                            <p className="mt-1 leading-6">{analysisError}</p>
+                          </div>
                         )}
-                      </AnimatePresence>
-                    </div>
 
-                    <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                        <p>
-                          Demo only. This is a concept view, not a diagnosis.
-                        </p>
+                        <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                            <p>
+                              {(analysisResult ?? fallbackAnalysis).disclaimer}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-56 items-center justify-center rounded-[1.75rem] border border-dashed border-slate-300 bg-white/70 p-8 text-center">
+                          <div className="max-w-md space-y-3">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
+                              <ScanLine className="h-5 w-5" />
+                            </div>
+                            <div className="text-lg font-semibold text-slate-900">
+                              Step 2 unlocks after analysis
+                            </div>
+                            <p className="text-sm leading-6 text-slate-500">
+                              Once the scan finishes, the UI switches to a dedicated
+                              result-details page.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="results-step"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="space-y-5"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+                        <div>
+                          <div className="text-sm font-medium text-slate-500">
+                            Step 2
+                          </div>
+                          <div className="mt-1 text-lg font-semibold text-slate-900">
+                            Result details
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">
+                            Review one result section at a time on a focused page.
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          <Badge className="border-slate-200 bg-slate-100 text-slate-700">
+                            Confidence {(analysisResult ?? fallbackAnalysis).confidence}
+                          </Badge>
+                          <Button variant="outline" onClick={returnToUpload}>
+                            <ArrowLeft className="h-4 w-4" />
+                            Back to upload
+                          </Button>
+                          <Button variant="outline" onClick={resetDemo}>
+                            <RefreshCw className="h-4 w-4" />
+                            New scan
+                          </Button>
+                        </div>
+                      </div>
 
-                    <AnimatePresence mode="wait">
-                      {hasAnalyzed ? (
-                        <motion.div
-                          key="results"
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 8 }}
-                          className="space-y-4"
-                        >
-                          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+                      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
                             <Card className="rounded-[1.5rem] border-slate-200/80">
                               <CardHeader className="pb-3">
                                 <CardTitle className="text-base">Detail pages</CardTitle>
@@ -382,7 +553,7 @@ export default function BiteRevealPrototype() {
                                   </div>
                                 </button>
 
-                                {sampleInsights.map((insight, index) => (
+                                {(analysisResult ?? fallbackAnalysis).insights.map((insight, index) => (
                                   <button
                                     key={insight.title}
                                     type="button"
@@ -400,7 +571,7 @@ export default function BiteRevealPrototype() {
                                       </Badge>
                                     </div>
                                     <div className="mt-2 text-sm text-slate-500">
-                                      Open a more detailed view
+                                      {insight.summary}
                                     </div>
                                   </button>
                                 ))}
@@ -473,7 +644,10 @@ export default function BiteRevealPrototype() {
                                           Visible now
                                         </div>
                                         <div className="mt-2 text-sm font-medium text-slate-900">
-                                          Small asymmetry cues
+                                          {
+                                            (analysisResult ?? fallbackAnalysis)
+                                              .currentVisibleCondition.focusPoints[0]
+                                          }
                                         </div>
                                       </div>
                                       <div className="rounded-[1rem] bg-slate-50 p-4">
@@ -481,7 +655,10 @@ export default function BiteRevealPrototype() {
                                           Scan focus
                                         </div>
                                         <div className="mt-2 text-sm font-medium text-slate-900">
-                                          Tooth edge alignment and center balance
+                                          {
+                                            (analysisResult ?? fallbackAnalysis)
+                                              .currentVisibleCondition.focusPoints[1]
+                                          }
                                         </div>
                                       </div>
                                       <div className="rounded-[1rem] bg-slate-50 p-4">
@@ -489,10 +666,19 @@ export default function BiteRevealPrototype() {
                                           Takeaway
                                         </div>
                                         <div className="mt-2 text-sm font-medium text-slate-900">
-                                          Early shift may already be visible
+                                          {
+                                            (analysisResult ?? fallbackAnalysis)
+                                              .currentVisibleCondition.focusPoints[2]
+                                          }
                                         </div>
                                       </div>
                                     </div>
+                                    <p className="text-sm leading-6 text-slate-600">
+                                      {
+                                        (analysisResult ?? fallbackAnalysis)
+                                          .currentVisibleCondition.summary
+                                      }
+                                    </p>
                                   </div>
                                 )}
 
@@ -507,13 +693,17 @@ export default function BiteRevealPrototype() {
                                       <div className="absolute inset-0 bg-gradient-to-br from-rose-500/15 via-transparent to-amber-400/15" />
                                       <div className="absolute inset-x-0 bottom-0 p-5">
                                         <div className="rounded-[1rem] border border-white/15 bg-black/45 p-4 text-white backdrop-blur-sm">
-                                          <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">
-                                            3-year projection
+                                        <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">
+                                            {
+                                              (analysisResult ?? fallbackAnalysis)
+                                                .futureRiskSnapshot.projectionLabel
+                                            }
                                           </div>
                                           <div className="mt-2 text-sm leading-6 text-slate-100">
-                                            Slight worsening of asymmetry and
-                                            potential edge wear if nothing
-                                            changes.
+                                            {
+                                              (analysisResult ?? fallbackAnalysis)
+                                                .futureRiskSnapshot.summary
+                                            }
                                           </div>
                                         </div>
                                       </div>
@@ -524,7 +714,10 @@ export default function BiteRevealPrototype() {
                                           Risk
                                         </div>
                                         <div className="mt-2 text-sm font-medium text-slate-900">
-                                          Uneven contact can become more obvious
+                                          {
+                                            (analysisResult ?? fallbackAnalysis)
+                                              .futureRiskSnapshot.riskPoints[0]
+                                          }
                                         </div>
                                       </div>
                                       <div className="rounded-[1rem] bg-amber-50 p-4">
@@ -532,7 +725,10 @@ export default function BiteRevealPrototype() {
                                           Warning
                                         </div>
                                         <div className="mt-2 text-sm font-medium text-slate-900">
-                                          Wear may show earlier on front edges
+                                          {
+                                            (analysisResult ?? fallbackAnalysis)
+                                              .futureRiskSnapshot.riskPoints[1]
+                                          }
                                         </div>
                                       </div>
                                       <div className="rounded-[1rem] bg-cyan-50 p-4">
@@ -540,7 +736,10 @@ export default function BiteRevealPrototype() {
                                           Goal
                                         </div>
                                         <div className="mt-2 text-sm font-medium text-slate-900">
-                                          Make future impact feel immediate
+                                          {
+                                            (analysisResult ?? fallbackAnalysis)
+                                              .futureRiskSnapshot.riskPoints[2]
+                                          }
                                         </div>
                                       </div>
                                     </div>
@@ -562,7 +761,7 @@ export default function BiteRevealPrototype() {
                                         {selectedInsight.title}
                                       </div>
                                       <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                                        {selectedInsight.description}
+                                        {selectedInsight.detail}
                                       </p>
                                     </div>
                                     <div className="grid gap-3 md:grid-cols-2">
@@ -571,9 +770,7 @@ export default function BiteRevealPrototype() {
                                           What this page explains
                                         </div>
                                         <p className="mt-2 text-sm leading-6 text-slate-600">
-                                          This section zooms in on one pattern so
-                                          the user can understand the signal
-                                          without reading every result at once.
+                                          {selectedInsight.summary}
                                         </p>
                                       </div>
                                       <div className="rounded-[1rem] bg-white p-4 shadow-sm ring-1 ring-slate-200/80">
@@ -581,9 +778,7 @@ export default function BiteRevealPrototype() {
                                           Why it matters
                                         </div>
                                         <p className="mt-2 text-sm leading-6 text-slate-600">
-                                          Breaking each insight into its own page
-                                          makes the analysis feel calmer, more
-                                          guided, and easier to act on.
+                                          {selectedInsight.whyItMatters}
                                         </p>
                                       </div>
                                     </div>
@@ -592,32 +787,9 @@ export default function BiteRevealPrototype() {
                               </CardContent>
                             </Card>
                           </div>
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="placeholder"
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 8 }}
-                          className="flex min-h-56 items-center justify-center rounded-[1.75rem] border border-dashed border-slate-300 bg-white/70 p-8 text-center"
-                        >
-                          <div className="max-w-md space-y-3">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
-                              <ScanLine className="h-5 w-5" />
-                            </div>
-                            <div className="text-lg font-semibold text-slate-900">
-                              Ready to simulate the reveal
-                            </div>
-                            <p className="text-sm leading-6 text-slate-500">
-                              Use the demo image or upload your own to preview
-                              the experience.
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </CardContent>
             </Card>
           </div>

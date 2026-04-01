@@ -1,6 +1,34 @@
-# React + TypeScript + Vite
+# BiteReveal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Local app
+
+```bash
+npm install
+npm run dev
+```
+
+## Local UI + API
+
+1. Copy `.env.example` to `.env`
+2. Add your `OPENAI_API_KEY`
+3. Run:
+
+```bash
+npm run dev:full
+```
+
+This starts:
+- the Vite frontend at `http://localhost:5173`
+- the Express API at `http://localhost:8787`
+
+The frontend calls `POST /api/analyze`, which proxies to the local API in development.
+
+## Notes
+
+- GitHub Pages can host the frontend, but not the backend API route.
+- To deploy `/api/analyze`, use a server host such as Vercel, Render, Railway, or another Node-compatible platform.
+- For a separately deployed API, rebuild the frontend with `VITE_API_BASE_URL=https://your-api-host`.
+- The backend uses the OpenAI Responses API with image input and structured JSON output.
 
 Currently, two official plugins are available:
 
