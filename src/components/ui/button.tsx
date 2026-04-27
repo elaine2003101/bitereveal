@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'default' | 'outline' | 'ghost'
+  size?: 'default' | 'sm'
 }
 
 const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
@@ -15,9 +16,15 @@ const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
     'bg-transparent text-slate-700 hover:bg-slate-100 focus-visible:outline-slate-400',
 }
 
+const sizes: Record<NonNullable<ButtonProps['size']>, string> = {
+  default: 'px-4 py-2 text-sm',
+  sm: 'px-3 py-1.5 text-xs',
+}
+
 export function Button({
   className,
   variant = 'default',
+  size = 'default',
   type = 'button',
   ...props
 }: ButtonProps) {
@@ -25,8 +32,9 @@ export function Button({
     <button
       type={type}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center gap-2 rounded-2xl font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50',
         variants[variant],
+        sizes[size],
         className,
       )}
       {...props}
