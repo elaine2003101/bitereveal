@@ -147,8 +147,11 @@ const ANALYSIS_SCHEMA = {
           projectionLabel: { type: 'string' },
           summary: { type: 'string' },
           riskPoints: { type: 'array', minItems: 3, maxItems: 3, items: { type: 'string' } },
+          threeMonths: { type: 'string' },
+          oneYear: { type: 'string' },
+          threeYears: { type: 'string' },
         },
-        required: ['title', 'projectionLabel', 'summary', 'riskPoints'],
+        required: ['title', 'projectionLabel', 'summary', 'riskPoints', 'threeMonths', 'oneYear', 'threeYears'],
       },
       insights: {
         type: 'array',
@@ -167,6 +170,21 @@ const ANALYSIS_SCHEMA = {
           required: ['title', 'severity', 'summary', 'detail', 'whyItMatters'],
         },
       },
+      actions: {
+        type: 'array',
+        minItems: 3,
+        maxItems: 3,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            title: { type: 'string' },
+            description: { type: 'string' },
+            urgency: { type: 'string', enum: ['today', 'this-week', 'this-month'] },
+          },
+          required: ['title', 'description', 'urgency'],
+        },
+      },
       disclaimer: { type: 'string' },
     },
     required: [
@@ -174,6 +192,7 @@ const ANALYSIS_SCHEMA = {
       'currentVisibleCondition',
       'futureRiskSnapshot',
       'insights',
+      'actions',
       'disclaimer',
     ],
   },
@@ -255,7 +274,7 @@ async function analyzeWithGemini({ imageDataUrl, model }) {
             role: 'user',
             parts: [
               {
-                text: 'Review this teeth or smile photo. Return concise JSON for a prototype UI. Focus on visible bite alignment, possible wear cues, and crowding tendency. Keep results cautious and non-diagnostic.',
+                text: 'Review this teeth or smile photo for a bite-awareness educational app. Return JSON with: currentVisibleCondition (what is visibly observable right now with 3 specific focus points); futureRiskSnapshot (what could happen if unchanged — include plain-English predictions for threeMonths, oneYear, and threeYears); insights (3 findings labelled Early/Watch/Low covering symmetry, wear, crowding); actions (3 specific steps — one urgency:today, one urgency:this-week, one urgency:this-month). Keep language warm, plain, non-alarming, non-diagnostic. Focus on education and motivation.',
               },
               { inlineData: { mimeType, data } },
             ],

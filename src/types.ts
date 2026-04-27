@@ -6,6 +6,12 @@ export type AnalysisInsight = {
   whyItMatters: string
 }
 
+export type AnalysisAction = {
+  title: string
+  description: string
+  urgency: 'today' | 'this-week' | 'this-month'
+}
+
 export type AnalysisResult = {
   confidence: 'low' | 'medium' | 'high'
   currentVisibleCondition: {
@@ -18,8 +24,12 @@ export type AnalysisResult = {
     projectionLabel: string
     summary: string
     riskPoints: string[]
+    threeMonths: string
+    oneYear: string
+    threeYears: string
   }
   insights: AnalysisInsight[]
+  actions: AnalysisAction[]
   disclaimer: string
 }
 

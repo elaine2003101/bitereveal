@@ -48,7 +48,7 @@ export function BenchmarkBar({ score }: Props) {
   return (
     <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="font-medium text-slate-900">Community benchmark</span>
+        <span className="font-medium text-slate-900">Benchmark</span>
         <span
           className={cn(
             'rounded-full px-2.5 py-0.5 text-xs font-semibold',
@@ -76,9 +76,7 @@ export function BenchmarkBar({ score }: Props) {
       </div>
 
       <p className="mt-2 text-sm text-slate-500">
-        Your bite signal is{' '}
-        <span className="font-medium text-slate-700">{label}</span> — score{' '}
-        {score}/100.
+        You are <span className="font-medium text-slate-700">{label}</span> at {score}/100.
       </p>
     </div>
   )

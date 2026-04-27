@@ -43,6 +43,10 @@ export function ShareCard({ result, scoreSummary, imageSrc }: Props) {
   }
 
   const lead = result.insights[0]
+  const leadSummary =
+    lead?.summary && lead.summary.length > 88
+      ? `${lead.summary.slice(0, 88).trim()}…`
+      : lead?.summary
   const scoreColor =
     scoreSummary.overall >= 70
       ? '#ef4444'
@@ -81,7 +85,7 @@ export function ShareCard({ result, scoreSummary, imageSrc }: Props) {
           <div className="mt-3 rounded-[1rem] border border-slate-200 bg-white/80 p-4">
             <div className="text-xs uppercase tracking-[0.14em] text-slate-500">Top finding</div>
             <div className="mt-1 text-sm font-semibold text-slate-900">{lead.title}</div>
-            <p className="mt-1 text-sm leading-6 text-slate-600">{lead.summary}</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{leadSummary}</p>
           </div>
         )}
 
