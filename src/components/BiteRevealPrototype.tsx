@@ -230,11 +230,13 @@ function buildConsultationNotes(result: AnalysisResult, scoreSummary: ScoreSumma
   ].join('\n')
 }
 
-async function readCaptureMeta(dataUrl: string, file: File): Promise<CaptureMeta> {
+async function readCaptureMeta(dataUrl: string, file?: File | null): Promise<CaptureMeta> {
+  const inferredMimeType = file?.type || dataUrl.match(/^data:([^;]+);/)?.[1] || 'image/jpeg'
+  const sizeKb = file ? Math.round(file.size / 1024) : 0
   return new Promise((resolve) => {
     const image = new Image()
-    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight, mimeType: file.type || 'image/jpeg', sizeKb: Math.round(file.size / 1024) })
-    image.onerror = () => resolve({ width: 0, height: 0, mimeType: file.type || 'image/jpeg', sizeKb: Math.round(file.size / 1024) })
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight, mimeType: inferredMimeType, sizeKb })
+    image.onerror = () => resolve({ width: 0, height: 0, mimeType: inferredMimeType, sizeKb })
     image.src = dataUrl
   })
 }
@@ -508,6 +510,12 @@ export default function BiteRevealPrototype() {
   const scoreSummary = useMemo(() => buildScoreSummary(activeResult), [activeResult])
   const captureGuidance = useMemo(() => buildCaptureGuidance(uploadedMeta), [uploadedMeta])
   const captureReadyCount = captureGuidance.filter((i) => i.status === 'good').length
+  const uploadedImageFrameStyle = useMemo(
+    () => ({
+      aspectRatio: uploadedMeta?.width && uploadedMeta.height ? `${uploadedMeta.width} / ${uploadedMeta.height}` : '4 / 3',
+    }),
+    [uploadedMeta],
+  )
   const confidenceMeta = getConfidenceMeta(activeResult.confidence)
   const effectiveDetail: DetailView = selectedDetail ?? { type: 'current' }
   const selectedInsight = effectiveDetail.type === 'insight' ? activeResult.insights[effectiveDetail.index] : null
@@ -541,7 +549,9 @@ export default function BiteRevealPrototype() {
       state: hasAnalyzed ? 'done' : uploadedImage ? 'current' : 'upcoming',
     },
   ] as const
-  const photoMetaLabel = uploadedMeta ? `${uploadedMeta.width}×${uploadedMeta.height} · ${uploadedMeta.sizeKb} KB` : 'No photo yet'
+  const photoMetaLabel = uploadedMeta
+    ? `${uploadedMeta.width}×${uploadedMeta.height}${uploadedMeta.sizeKb ? ` · ${uploadedMeta.sizeKb} KB` : ''}`
+    : 'No photo yet'
   const scanButtonLabel = !uploadedImage ? 'Choose a photo first' : analyzing ? 'Analysing...' : 'Run my scan'
   const resultSource = analysisNotice?.toLowerCase().includes('demo')
     ? { label: 'Demo result', detail: 'Fallback summary', badgeClassName: 'border-cyan-200 bg-cyan-50 text-cyan-700' }
@@ -549,8 +559,9 @@ export default function BiteRevealPrototype() {
       ? { label: 'Saved result', detail: 'Loaded from history', badgeClassName: 'border-slate-200 bg-slate-100 text-slate-700' }
       : { label: 'Live result', detail: 'Generated from this photo', badgeClassName: 'border-emerald-200 bg-emerald-50 text-emerald-700' }
 
-  const openHistoryScan = (entry: ScanHistoryEntry) => {
-    setUploadedImage(entry.imageSrc); setUploadedMeta(null); setAnalysisResult(entry.result)
+  const openHistoryScan = async (entry: ScanHistoryEntry) => {
+    const nextMeta = await readCaptureMeta(entry.imageSrc)
+    setUploadedImage(entry.imageSrc); setUploadedMeta(nextMeta); setAnalysisResult(entry.result)
     setHasAnalyzed(true); setAnalyzing(false); setProgress(100)
     setSelectedDetail(null); setAnalysisError(null)
     setAnalysisNotice(entry.source === 'demo' ? 'Saved demo scan loaded.' : 'Saved scan loaded.')
@@ -580,32 +591,24 @@ export default function BiteRevealPrototype() {
               <StreakBadge />
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-              <div className="space-y-6">
+            <div className="space-y-5">
+              <div className="space-y-5">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-4 py-2 text-sm text-slate-600 shadow-sm">
                   <Sparkles className="h-4 w-4 text-cyan-600" />
                   One photo, one quick scan, clear next steps
                 </div>
-                <h1 className="text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl">
+                <h1 className="max-w-4xl text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl">
                   Understand your bite.<br />
                   <span className="bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
                     Without guessing what to do next.
                   </span>
                 </h1>
-                <p className="max-w-xl text-xl leading-8 text-slate-500">
+                <p className="max-w-3xl text-xl leading-8 text-slate-500">
                   Upload a clear smile photo and get a simple read on bite balance, visible wear, and what to watch over time. The goal is to make your first scan feel calm, fast, and easy to understand.
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    'Takes about 30 seconds',
-                    'Works with a regular phone photo',
-                    'Gives you a plain-language action plan',
-                  ].map((item) => (
-                    <div key={item} className="rounded-full border border-slate-200 bg-white/90 px-4 py-2 text-sm text-slate-600 shadow-sm">
-                      {item}
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm font-medium text-slate-500">
+                  Takes about 30 seconds. Works with a regular phone photo. Gives you a plain-language action plan.
+                </p>
                 <div className="flex flex-wrap gap-3">
                   <Button
                     className="rounded-2xl px-6 py-3 text-base"
@@ -621,84 +624,83 @@ export default function BiteRevealPrototype() {
                 </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-slate-200/80 bg-white/95 p-5 shadow-sm">
-                <div className="text-sm font-semibold text-cyan-700">Before you start</div>
-                <div className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
-                  Keep it simple.
-                </div>
-                <div className="mt-4 space-y-2.5">
-                  {[
-                    { icon: Camera, title: 'A clear smile photo', desc: 'Front-facing, well lit, and close enough that your teeth are easy to see.' },
-                    { icon: ScanLine, title: 'About 30 seconds', desc: 'Upload your image, run the scan, then review the explanation at your own pace.' },
-                    { icon: CheckCircle2, title: 'A learning mindset', desc: 'This helps you spot patterns and plan next steps. It is not a diagnosis.' },
-                  ].map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <div key={item.title} className="flex items-start gap-3 rounded-[1.15rem] bg-slate-50 px-4 py-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-cyan-700 ring-1 ring-slate-200">
-                          <Icon className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-                          <p className="mt-1 text-sm leading-6 text-slate-500">{item.desc}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="mt-4 rounded-[1.15rem] border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-900">
-                  If you have pain, swelling, or a dental emergency, skip the scan and contact a clinician directly.
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
-              <div className="max-w-2xl">
-                <div className="text-sm font-semibold text-cyan-700">How it works</div>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">One simple flow, one useful result.</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Add a clear smile photo, let the scan read visible bite patterns, then review one result page with a summary, timeline, and next steps.
-                </p>
-              </div>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                {[
-                  { step: '01', icon: Upload, title: 'Add a smile photo', desc: 'Take or choose a front-facing photo with teeth visible.' },
-                  { step: '02', icon: ScanLine, title: 'Run the scan', desc: 'The model checks visible asymmetry, wear cues, and crowding patterns.' },
-                  { step: '03', icon: CheckCircle2, title: 'Review next steps', desc: 'See one clear summary with a timeline and action plan.' },
-                ].map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <div key={item.step} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div className="text-sm font-semibold text-cyan-700">Step {item.step}</div>
-                      </div>
-                      <div className="mt-4 text-base font-semibold text-slate-900">{item.title}</div>
-                      <p className="mt-2 text-sm leading-6 text-slate-500">{item.desc}</p>
+              <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+                <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                  <div>
+                    <div className="text-sm font-semibold text-cyan-700">Before you scan</div>
+                    <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Keep it simple.</div>
+                    <div className="mt-5 space-y-3">
+                      {[
+                        { icon: Camera, title: 'A clear smile photo', desc: 'Front-facing, well lit, and close enough that your teeth are easy to see.' },
+                        { icon: ScanLine, title: 'About 30 seconds', desc: 'Upload your image, run the scan, then review the explanation at your own pace.' },
+                        { icon: CheckCircle2, title: 'A learning mindset', desc: 'This helps you spot patterns and plan next steps. It is not a diagnosis.' },
+                      ].map((item) => {
+                        const Icon = item.icon
+                        return (
+                          <div key={item.title} className="flex items-start gap-3 rounded-[1.15rem] bg-slate-50 px-4 py-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-cyan-700 ring-1 ring-slate-200">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-slate-900">{item.title}</div>
+                              <p className="mt-1 text-sm leading-6 text-slate-500">{item.desc}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                  )
-                })}
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-6">
-                {[
-                  { icon: Eye, label: 'Visual summary' },
-                  { icon: TrendingUp, label: 'Timeline view' },
-                  { icon: Shield, label: 'Action plan' },
-                ].map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <div key={item.label} className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-cyan-700 ring-1 ring-slate-200">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="text-sm font-medium text-slate-700">{item.label}</div>
+                    <div className="mt-4 rounded-[1.15rem] border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-900">
+                      If you have pain, swelling, or a dental emergency, skip the scan and contact a clinician directly.
                     </div>
-                  )
-                })}
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-semibold text-cyan-700">How it works</div>
+                    <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">One simple flow, one useful result.</div>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                      Add a clear smile photo, let the scan read visible bite patterns, then review one result page with a summary, timeline, and next steps.
+                    </p>
+                    <div className="mt-5 grid gap-4 md:grid-cols-3">
+                      {[
+                        { step: '01', icon: Upload, title: 'Add a smile photo', desc: 'Take or choose a front-facing photo with teeth visible.' },
+                        { step: '02', icon: ScanLine, title: 'Run the scan', desc: 'The model checks visible asymmetry, wear cues, and crowding patterns.' },
+                        { step: '03', icon: CheckCircle2, title: 'Review next steps', desc: 'See one clear summary with a timeline and action plan.' },
+                      ].map((item) => {
+                        const Icon = item.icon
+                        return (
+                          <div key={item.step} className="rounded-[1.3rem] border border-slate-200 bg-slate-50/80 p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200">
+                                <Icon className="h-4 w-4" />
+                              </div>
+                              <div className="text-sm font-semibold text-cyan-700">Step {item.step}</div>
+                            </div>
+                            <div className="mt-4 text-base font-semibold text-slate-900">{item.title}</div>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">{item.desc}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
+                      {[
+                        { icon: Eye, label: 'Visual summary' },
+                        { icon: TrendingUp, label: 'Timeline view' },
+                        { icon: Shield, label: 'Action plan' },
+                      ].map((item) => {
+                        const Icon = item.icon
+                        return (
+                          <div key={item.label} className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-cyan-700 ring-1 ring-slate-200">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="text-sm font-medium text-slate-700">{item.label}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -786,7 +788,8 @@ export default function BiteRevealPrototype() {
                               </div>
 
                               <button type="button"
-                                className="group relative mt-5 flex aspect-[5/4] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-slate-300 bg-white transition hover:border-cyan-300 hover:bg-cyan-50/40 md:aspect-[4/3] xl:aspect-[5/4]"
+                                className="group relative mt-5 flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-slate-300 bg-white transition hover:border-cyan-300 hover:bg-cyan-50/40"
+                                style={uploadedImageFrameStyle}
                                 onClick={() => inputRef.current?.click()}
                               >
                                 {uploadedImage && <img src={uploadedImage} alt="Uploaded smile" className="h-full w-full object-cover" />}
@@ -1181,7 +1184,7 @@ export default function BiteRevealPrototype() {
                               {/* Current condition */}
                               {effectiveDetail.type === 'current' && (
                                 <div className="space-y-5">
-                                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-100 md:aspect-[16/11] xl:aspect-[3/2]">
+                                  <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-100" style={uploadedImageFrameStyle}>
                                     <img src={uploadedImage ?? ''} alt="Current condition" className="h-full w-full object-cover" />
                                     <AnalysisOverlay active={true} />
                                   </div>
@@ -1211,10 +1214,10 @@ export default function BiteRevealPrototype() {
                               {/* Future risk */}
                               {effectiveDetail.type === 'future' && (
                                 <div className="space-y-5">
-                                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-950 md:aspect-[16/11] xl:aspect-[3/2]">
-                                      <img src={uploadedImage ?? ''} alt="Projected condition" className="h-full w-full object-cover" />
-                                      <div className="absolute inset-0 bg-gradient-to-br from-rose-500/25 via-transparent to-amber-400/25" />
-                                      <div className="absolute inset-x-0 bottom-0 p-5">
+                                  <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-950" style={uploadedImageFrameStyle}>
+                                    <img src={uploadedImage ?? ''} alt="Projected condition" className="h-full w-full object-cover" />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-rose-500/25 via-transparent to-amber-400/25" />
+                                    <div className="absolute inset-x-0 bottom-0 p-5">
                                         <div className="rounded-[1rem] border border-white/15 bg-black/50 p-4 text-white backdrop-blur">
                                           <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">{activeResult.futureRiskSnapshot.projectionLabel}</div>
                                           <p className="mt-1 text-sm leading-6 text-slate-200">{activeResult.futureRiskSnapshot.summary}</p>
