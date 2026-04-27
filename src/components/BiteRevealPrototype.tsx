@@ -739,84 +739,54 @@ export default function BiteRevealPrototype() {
             {/* Hero visual */}
             <HeroVisual />
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_0.9fr]">
-              <div className="space-y-5 rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-tight">How your first scan works</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                    The flow is intentionally simple: add one good photo, let the AI read visible patterns, then review the explanation in plain language.
-                  </p>
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
+              <div className="max-w-2xl">
+                <div className="text-sm font-semibold text-cyan-700">How it works</div>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">One simple flow, one useful result.</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Add a clear smile photo, let the scan read visible bite patterns, then review one result page with a summary, timeline, and next steps.
+                </p>
+              </div>
+
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
                 {[
-                  { step: '01', icon: Upload, title: 'Add a smile photo', desc: 'Take or choose a front-facing photo. A regular phone shot is fine if the teeth are visible.' },
-                  { step: '02', icon: ScanLine, title: 'Review the scan', desc: 'The model checks for visible asymmetry, wear cues, and crowding tendencies in seconds.' },
-                  { step: '03', icon: CheckCircle2, title: 'Get clear next steps', desc: 'See a score, a simple explanation, and a plan for what to do today, this week, and later.' },
+                  { step: '01', icon: Upload, title: 'Add a smile photo', desc: 'Take or choose a front-facing photo with teeth visible.' },
+                  { step: '02', icon: ScanLine, title: 'Run the scan', desc: 'The model checks visible asymmetry, wear cues, and crowding patterns.' },
+                  { step: '03', icon: CheckCircle2, title: 'Review next steps', desc: 'See one clear summary with a timeline and action plan.' },
                 ].map((item) => {
                   const Icon = item.icon
                   return (
-                    <div key={item.step} className="relative overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
-                      <div className="absolute right-4 top-4 text-5xl font-black text-slate-100">{item.step}</div>
-                      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200">
-                        <Icon className="h-6 w-6" />
+                    <div key={item.step} className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div className="text-sm font-semibold text-cyan-700">Step {item.step}</div>
                       </div>
-                      <div className="text-base font-semibold text-slate-900">{item.title}</div>
+                      <div className="mt-4 text-base font-semibold text-slate-900">{item.title}</div>
                       <p className="mt-2 text-sm leading-6 text-slate-500">{item.desc}</p>
                     </div>
                   )
                 })}
-                </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f4fbff_100%)] p-6 shadow-sm">
-                <div className="text-sm font-semibold text-cyan-700">What you get back</div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">A scan result you can actually use.</div>
-                <div className="mt-5 space-y-3">
-                  {[
-                    { icon: Eye, title: 'A visual summary', desc: 'See the main pattern the scan picked up on your current photo.' },
-                    { icon: TrendingUp, title: 'A timeline view', desc: 'Understand what may change over the next few months and years if habits stay the same.' },
-                    { icon: Shield, title: 'An action plan', desc: 'Leave with simple, concrete next steps instead of vague advice.' },
-                  ].map((item) => {
-                    const Icon = item.icon
-                    return (
-                      <div key={item.title} className="flex items-start gap-3 rounded-[1.2rem] border border-slate-200 bg-white/90 p-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900">{item.title}</div>
-                          <p className="mt-1 text-sm leading-6 text-slate-500">{item.desc}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Feature grid */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                { icon: Eye, title: 'Spot hidden patterns', desc: 'Turn subtle alignment issues into visuals anyone can understand.', accent: 'text-cyan-700 bg-cyan-50 ring-cyan-200' },
-                { icon: Shield, title: 'Predict what comes next', desc: 'See 3-month, 1-year, and 3-year projections based on what the scan finds.', accent: 'text-blue-700 bg-blue-50 ring-blue-200' },
-                { icon: CheckCircle2, title: 'Clear action plan', desc: 'Get specific steps to take today, this week, and this month — not vague advice.', accent: 'text-emerald-700 bg-emerald-50 ring-emerald-200' },
-                { icon: TrendingUp, title: 'Track over time', desc: 'Every scan is saved. Watch your score trend and see if changes are helping.', accent: 'text-violet-700 bg-violet-50 ring-violet-200' },
-                { icon: Dumbbell, title: 'Exercises you can do now', desc: '5 guided jaw exercises with timers. No equipment, no dentist appointment needed.', accent: 'text-amber-700 bg-amber-50 ring-amber-200' },
-                { icon: Sparkles, title: 'AI coaching on demand', desc: 'Get personalised coaching text from Claude based on your exact scan results.', accent: 'text-rose-700 bg-rose-50 ring-rose-200' },
-              ].map((f) => {
-                const Icon = f.icon
-                return (
-                  <Card key={f.title} className="rounded-[1.75rem] border-slate-200/70 shadow-sm">
-                    <CardContent className="p-6">
-                      <div className={cn('mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ring-1', f.accent)}>
+              <div className="mt-6 grid gap-3 border-t border-slate-100 pt-6 sm:grid-cols-3">
+                {[
+                  { icon: Eye, label: 'Visual summary' },
+                  { icon: TrendingUp, label: 'Timeline view' },
+                  { icon: Shield, label: 'Action plan' },
+                ].map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <div key={item.label} className="flex items-center gap-3 rounded-[1.2rem] bg-slate-50 px-4 py-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-cyan-700 ring-1 ring-slate-200">
                         <Icon className="h-5 w-5" />
                       </div>
-                      <div className="text-sm font-semibold">{f.title}</div>
-                      <div className="mt-1 text-sm text-slate-500">{f.desc}</div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
+                      <div className="text-sm font-medium text-slate-700">{item.label}</div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
