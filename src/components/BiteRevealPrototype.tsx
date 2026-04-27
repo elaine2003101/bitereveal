@@ -970,7 +970,7 @@ export default function BiteRevealPrototype() {
                     ) : (
                       /* Results step */
                       <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-                        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+                        <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
 
                           {/* Left sidebar */}
                           <div className="space-y-3">
