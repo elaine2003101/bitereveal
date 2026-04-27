@@ -41,6 +41,7 @@ import { BeforeAfterComparison } from './features/BeforeAfterComparison'
 import { BiteAge } from './features/BiteAge'
 import { BruxismRisk } from './features/BruxismRisk'
 import { CoachingPanel } from './features/CoachingPanel'
+import { FutureVision } from './features/FutureVision'
 import { JawExerciseLibrary } from './features/JawExerciseLibrary'
 import { LifestyleCorrelation } from './features/LifestyleCorrelation'
 import { OrthoNeed } from './features/OrthoNeed'
@@ -65,7 +66,7 @@ export type { AnalysisAction, AnalysisInsight, AnalysisResult, ScanHistoryEntry,
 type CaptureMeta = { width: number; height: number; mimeType: string; sizeKb: number }
 type GuidanceItem = { label: string; detail: string; status: 'good' | 'watch' }
 type DetailView = { type: 'current' } | { type: 'future' } | { type: 'insight'; index: number }
-type TabId = 'scan' | 'timeline' | 'compare' | 'exercises' | 'lifestyle' | 'explain' | 'report'
+type TabId = 'scan' | 'timeline' | 'compare' | 'exercises' | 'lifestyle' | 'explain' | 'report' | 'vision'
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'scan', label: 'Scan', icon: <ScanLine className="h-3.5 w-3.5" /> },
@@ -75,6 +76,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'lifestyle', label: 'Lifestyle', icon: <Heart className="h-3.5 w-3.5" /> },
   { id: 'explain', label: 'Risk guide', icon: <Eye className="h-3.5 w-3.5" /> },
   { id: 'report', label: 'Report', icon: <Mail className="h-3.5 w-3.5" /> },
+  { id: 'vision', label: 'Vision', icon: <Sparkles className="h-3.5 w-3.5" /> },
 ]
 
 const HISTORY_STORAGE_KEY = 'bitereveal-scan-history-v1'
@@ -1208,10 +1210,11 @@ export default function BiteRevealPrototype() {
 
                 {activeTab === 'timeline' && <ProgressTimeline scanHistory={scanHistory} />}
                 {activeTab === 'compare' && <BeforeAfterComparison currentImage={uploadedImage} />}
-                {activeTab === 'exercises' && <JawExerciseLibrary />}
+                {activeTab === 'exercises' && <JawExerciseLibrary scoreSummary={hasAnalyzed ? scoreSummary : undefined} />}
                 {activeTab === 'lifestyle' && <LifestyleCorrelation scanHistory={scanHistory} />}
                 {activeTab === 'explain' && <RiskExplainer />}
                 {activeTab === 'report' && <WeeklyReport apiBaseUrl={apiBaseUrl} scanHistory={scanHistory} />}
+                {activeTab === 'vision' && <FutureVision />}
               </CardContent>
             </Card>
           </div>
