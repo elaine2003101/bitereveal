@@ -389,90 +389,6 @@ function AnalysisOverlay({ active }: { active: boolean }) {
   )
 }
 
-// ── Hero scan animation ───────────────────────────────────────────────────────
-
-function HeroVisual() {
-  return (
-    <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-8 py-12">
-      {/* Background glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(6,182,212,0.18),transparent_60%)]" />
-
-      <div className="relative grid gap-8 md:grid-cols-[1fr_280px]">
-        {/* Left: scan frame mockup */}
-        <div className="flex flex-col justify-center gap-5">
-          <div className="relative aspect-[4/3] max-w-sm overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5">
-            {/* Scan overlay lines */}
-            <div className="absolute left-[20%] top-[15%] h-[60%] w-px bg-cyan-400/60" />
-            <div className="absolute left-1/2 top-[10%] h-[70%] w-px -translate-x-1/2 bg-cyan-300/70" />
-            <div className="absolute right-[20%] top-[18%] h-[58%] w-px bg-cyan-400/60" />
-            <div className="absolute inset-x-[18%] top-[38%] h-px bg-cyan-200/50" />
-            <div className="absolute inset-x-[16%] top-[58%] h-px bg-cyan-200/50" />
-            <div className="absolute left-[24%] top-[34%] h-16 w-16 rounded-full border border-amber-400/60 bg-amber-400/10" />
-            <div className="absolute right-[22%] top-[30%] h-20 w-20 rounded-full border border-rose-400/60 bg-rose-400/10" />
-            {/* Animated scan line */}
-            <motion.div
-              className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-80"
-              animate={{ top: ['15%', '80%', '15%'] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-            />
-            {/* Frame corners */}
-            <div className="absolute left-3 top-3 h-5 w-5 rounded-tl-lg border-l-2 border-t-2 border-cyan-400/70" />
-            <div className="absolute right-3 top-3 h-5 w-5 rounded-tr-lg border-r-2 border-t-2 border-cyan-400/70" />
-            <div className="absolute bottom-3 left-3 h-5 w-5 rounded-bl-lg border-b-2 border-l-2 border-cyan-400/70" />
-            <div className="absolute bottom-3 right-3 h-5 w-5 rounded-br-lg border-b-2 border-r-2 border-cyan-400/70" />
-            <div className="absolute bottom-3 left-3 rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium text-cyan-300">
-              Scanning…
-            </div>
-          </div>
-        </div>
-
-        {/* Right: result cards */}
-        <div className="flex flex-col justify-center gap-3">
-          {[
-            { label: 'Bite symmetry', value: 'Watch', color: 'text-amber-400', bar: 60 },
-            { label: 'Wear risk', value: 'Early', color: 'text-cyan-400', bar: 38 },
-            { label: 'Crowding', value: 'Low', color: 'text-emerald-400', bar: 22 },
-          ].map((item, i) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + i * 0.15 }}
-              className="rounded-[1rem] border border-white/10 bg-white/5 p-3"
-            >
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-300">{item.label}</span>
-                <span className={cn('font-semibold', item.color)}>{item.value}</span>
-              </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <motion.div
-                  className="h-full rounded-full bg-current opacity-70"
-                  style={{ color: item.color.replace('text-', '') }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${item.bar}%` }}
-                  transition={{ delay: 0.6 + i * 0.15, duration: 0.8, ease: 'easeOut' }}
-                />
-              </div>
-            </motion.div>
-          ))}
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="mt-1 rounded-[1rem] border border-cyan-400/30 bg-cyan-400/10 p-3"
-          >
-            <div className="text-xs font-semibold text-cyan-300">What to do next</div>
-            <p className="mt-1 text-xs leading-5 text-slate-400">
-              Book a routine check-up and mention bite alignment to your dentist.
-            </p>
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function BiteRevealPrototype() {
@@ -656,7 +572,7 @@ export default function BiteRevealPrototype() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="space-y-14">
 
           {/* ── HERO ── */}
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <Badge className="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-1 text-cyan-700">
                 Friendly first scan · Educational prototype
@@ -664,7 +580,7 @@ export default function BiteRevealPrototype() {
               <StreakBadge />
             </div>
 
-            <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
               <div className="space-y-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-4 py-2 text-sm text-slate-600 shadow-sm">
                   <Sparkles className="h-4 w-4 text-cyan-600" />
@@ -705,12 +621,12 @@ export default function BiteRevealPrototype() {
                 </div>
               </div>
 
-              <div className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-lg shadow-slate-200/50">
+              <div className="rounded-[1.75rem] border border-slate-200/80 bg-white/95 p-5 shadow-sm">
                 <div className="text-sm font-semibold text-cyan-700">Before you start</div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                  Your first scan only needs a few simple things.
+                <div className="mt-2 text-xl font-semibold tracking-tight text-slate-950">
+                  Keep it simple.
                 </div>
-                <div className="mt-5 space-y-3">
+                <div className="mt-4 space-y-2.5">
                   {[
                     { icon: Camera, title: 'A clear smile photo', desc: 'Front-facing, well lit, and close enough that your teeth are easy to see.' },
                     { icon: ScanLine, title: 'About 30 seconds', desc: 'Upload your image, run the scan, then review the explanation at your own pace.' },
@@ -718,9 +634,9 @@ export default function BiteRevealPrototype() {
                   ].map((item) => {
                     const Icon = item.icon
                     return (
-                      <div key={item.title} className="flex items-start gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50/80 p-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-cyan-700 ring-1 ring-slate-200">
-                          <Icon className="h-5 w-5" />
+                      <div key={item.title} className="flex items-start gap-3 rounded-[1.15rem] bg-slate-50 px-4 py-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white text-cyan-700 ring-1 ring-slate-200">
+                          <Icon className="h-4.5 w-4.5" />
                         </div>
                         <div>
                           <div className="text-sm font-semibold text-slate-900">{item.title}</div>
@@ -730,14 +646,11 @@ export default function BiteRevealPrototype() {
                     )
                   })}
                 </div>
-                <div className="mt-5 rounded-[1.25rem] border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
+                <div className="mt-4 rounded-[1.15rem] border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-900">
                   If you have pain, swelling, or a dental emergency, skip the scan and contact a clinician directly.
                 </div>
               </div>
             </div>
-
-            {/* Hero visual */}
-            <HeroVisual />
 
             <div className="rounded-[1.75rem] border border-slate-200/80 bg-white p-6 shadow-sm">
               <div className="max-w-2xl">
@@ -770,7 +683,7 @@ export default function BiteRevealPrototype() {
                 })}
               </div>
 
-              <div className="mt-6 grid gap-3 border-t border-slate-100 pt-6 sm:grid-cols-3">
+              <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-6">
                 {[
                   { icon: Eye, label: 'Visual summary' },
                   { icon: TrendingUp, label: 'Timeline view' },
@@ -778,9 +691,9 @@ export default function BiteRevealPrototype() {
                 ].map((item) => {
                   const Icon = item.icon
                   return (
-                    <div key={item.label} className="flex items-center gap-3 rounded-[1.2rem] bg-slate-50 px-4 py-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-cyan-700 ring-1 ring-slate-200">
-                        <Icon className="h-5 w-5" />
+                    <div key={item.label} className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-cyan-700 ring-1 ring-slate-200">
+                        <Icon className="h-4 w-4" />
                       </div>
                       <div className="text-sm font-medium text-slate-700">{item.label}</div>
                     </div>
