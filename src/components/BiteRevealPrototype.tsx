@@ -38,13 +38,17 @@ import { cn } from '@/lib/utils'
 
 import { BenchmarkBar } from './features/BenchmarkBar'
 import { BeforeAfterComparison } from './features/BeforeAfterComparison'
+import { BiteAge } from './features/BiteAge'
+import { BruxismRisk } from './features/BruxismRisk'
 import { CoachingPanel } from './features/CoachingPanel'
 import { JawExerciseLibrary } from './features/JawExerciseLibrary'
 import { LifestyleCorrelation } from './features/LifestyleCorrelation'
+import { OrthoNeed } from './features/OrthoNeed'
 import { ProgressTimeline } from './features/ProgressTimeline'
 import { RiskExplainer } from './features/RiskExplainer'
 import { ShareCard } from './features/ShareCard'
 import { StreakBadge, recordScanToday } from './features/StreakBadge'
+import { TreatmentRoadmap } from './features/TreatmentRoadmap'
 import { WeeklyReport } from './features/WeeklyReport'
 
 import type {
@@ -980,6 +984,9 @@ export default function BiteRevealPrototype() {
                               </div>
                             ))}
                           </div>
+                          <div className="hidden md:block border-l border-slate-100 pl-5">
+                            <BiteAge scoreSummary={scoreSummary} />
+                          </div>
                         </div>
 
                         {/* ── Main layout: photo left (3fr), sidebar right (2fr) ── */}
@@ -1151,6 +1158,12 @@ export default function BiteRevealPrototype() {
                               <BenchmarkBar score={scoreSummary.overall} />
                             </div>
 
+                            {/* Bruxism risk */}
+                            <BruxismRisk scoreSummary={scoreSummary} />
+
+                            {/* Ortho need */}
+                            <OrthoNeed scoreSummary={scoreSummary} />
+
                             {/* AI Coaching */}
                             <CoachingPanel result={activeResult} scoreSummary={scoreSummary} apiBaseUrl={apiBaseUrl} />
 
@@ -1184,6 +1197,10 @@ export default function BiteRevealPrototype() {
                             </div>
                           </div>
                         </div>
+
+                        {/* ── Treatment Roadmap (full width) ── */}
+                        <TreatmentRoadmap scoreSummary={scoreSummary} />
+
                       </motion.div>
                     )}
                   </AnimatePresence>
