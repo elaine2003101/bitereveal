@@ -652,7 +652,7 @@ export default function BiteRevealPrototype() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_30%),linear-gradient(180deg,#f8fbff_0%,#f6f7fb_100%)] text-slate-900">
-      <div className="mx-auto max-w-[1280px] px-6 py-10 md:px-10 md:py-14">
+      <div className="mx-auto max-w-[1400px] px-6 py-10 md:px-10 md:py-14">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }} className="space-y-14">
 
           {/* ── HERO ── */}
@@ -844,7 +844,7 @@ export default function BiteRevealPrototype() {
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-6 p-5 md:p-7">
+              <CardContent className="space-y-7 p-5 md:p-7 lg:p-8">
                 <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => onUpload(e.target.files?.[0])} />
 
                 {/* ── SCAN TAB ── */}
@@ -888,7 +888,7 @@ export default function BiteRevealPrototype() {
                           ))}
                         </div>
 
-                        <div className="grid items-start gap-6 lg:grid-cols-[0.72fr_1.28fr]">
+                        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.14fr)_minmax(380px,0.86fr)] xl:gap-8">
                           <div className="space-y-4">
                             <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
                               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -903,7 +903,7 @@ export default function BiteRevealPrototype() {
                               </div>
 
                               <button type="button"
-                                className="group relative mt-5 flex aspect-[4/3] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-slate-300 bg-white transition hover:border-cyan-300 hover:bg-cyan-50/40"
+                                className="group relative mt-5 flex aspect-[5/4] w-full cursor-pointer items-center justify-center overflow-hidden rounded-[1.5rem] border border-dashed border-slate-300 bg-white transition hover:border-cyan-300 hover:bg-cyan-50/40 md:aspect-[4/3] xl:aspect-[5/4]"
                                 onClick={() => inputRef.current?.click()}
                               >
                                 {uploadedImage && <img src={uploadedImage} alt="Uploaded smile" className="h-full w-full object-cover" />}
@@ -945,19 +945,34 @@ export default function BiteRevealPrototype() {
                               </div>
                             </div>
 
-                            <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-                              <div className="space-y-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="font-medium">Scan readiness</span>
-                                  <span className="text-slate-500">{readiness}%</span>
+                            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                              <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                                  <span className="font-medium text-slate-800">Scan readiness</span>
+                                  <span className="rounded-full bg-white px-2.5 py-1 font-medium text-slate-500 ring-1 ring-slate-200">{readiness}%</span>
                                 </div>
                                 <Progress value={readiness} />
-                                <p className="text-sm leading-6 text-slate-500">{readinessMessage}</p>
+                                <p className="mt-3 text-sm leading-6 text-slate-500">{readinessMessage}</p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                  {captureGuidance.map((item) => (
+                                    <div
+                                      key={item.label}
+                                      className={cn(
+                                        'rounded-full px-3 py-1 text-xs font-medium ring-1',
+                                        item.status === 'good'
+                                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                          : 'bg-amber-50 text-amber-700 ring-amber-200',
+                                      )}
+                                    >
+                                      {item.label}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
 
                               <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-sm">
                                 <div className="text-sm font-medium text-slate-700">This works best with</div>
-                                <div className="mt-3 grid gap-2 text-sm text-slate-500">
+                                <div className="mt-3 grid gap-2 text-sm text-slate-500 sm:grid-cols-2 lg:grid-cols-1">
                                   {[
                                     'A straight-on smile',
                                     'Bright natural or overhead light',
@@ -975,23 +990,47 @@ export default function BiteRevealPrototype() {
 
                           <div className="space-y-4">
                             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                              <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                   <div className="text-sm font-medium text-cyan-700">Step 2</div>
-                                  <div className="mt-1 text-lg font-semibold text-slate-900">Check the photo quality</div>
-                                  <p className="mt-1 text-sm text-slate-500">These checks help the scan read the image more reliably.</p>
+                                  <div className="mt-1 text-xl font-semibold text-slate-900">Check the photo quality</div>
+                                  <p className="mt-1 max-w-xl text-sm leading-6 text-slate-500">These checks help the scan read the image more reliably. If one item is marked watch, you can still continue, but improving it usually gives you a clearer first result.</p>
                                 </div>
                                 <Badge className="border-slate-200 bg-slate-100 text-slate-700">{captureReadyCount}/3 ready</Badge>
                               </div>
-                              <div className="mt-4 space-y-2">
+                              <div className="mt-4 rounded-[1.15rem] border border-cyan-100 bg-cyan-50/70 p-4">
+                                <div className="text-sm font-semibold text-cyan-900">What we check</div>
+                                <p className="mt-1 text-sm leading-6 text-cyan-900/80">Framing makes sure the smile is centered, image detail helps the AI see tooth edges clearly, and file type keeps the upload stable.</p>
+                              </div>
+                              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-1">
                                 {captureGuidance.map((item) => (
-                                  <div key={item.label} className="flex items-start gap-3 rounded-[0.95rem] border border-slate-200 bg-slate-50 p-3">
-                                    {item.status === 'good'
-                                      ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                                      : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}
-                                    <div>
-                                      <div className="text-sm font-semibold text-slate-900">{item.label}</div>
-                                      <p className="text-sm text-slate-500">{item.detail}</p>
+                                  <div
+                                    key={item.label}
+                                    className={cn(
+                                      'rounded-[1.1rem] border p-4',
+                                      item.status === 'good'
+                                        ? 'border-emerald-200 bg-emerald-50/60'
+                                        : 'border-amber-200 bg-amber-50/70',
+                                    )}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      {item.status === 'good'
+                                        ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                                        : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />}
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <div className="text-sm font-semibold text-slate-900">{item.label}</div>
+                                          <Badge className={cn(
+                                            'px-2 py-0.5 text-[11px]',
+                                            item.status === 'good'
+                                              ? 'border-emerald-200 bg-white text-emerald-700'
+                                              : 'border-amber-200 bg-white text-amber-700',
+                                          )}>
+                                            {item.status === 'good' ? 'Looks good' : 'Needs attention'}
+                                          </Badge>
+                                        </div>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
+                                      </div>
                                     </div>
                                   </div>
                                 ))}
