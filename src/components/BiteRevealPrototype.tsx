@@ -969,46 +969,128 @@ export default function BiteRevealPrototype() {
                       </motion.div>
                     ) : (
                       /* Results step */
-                      <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-                        <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+                      <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
 
-                          {/* Left sidebar */}
-                          <div className="space-y-3">
-
-                            {/* Score header */}
-                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                              <div className="flex items-center gap-4">
-                                <ScoreRing score={scoreSummary.overall} />
-                                <div className="min-w-0 space-y-1.5">
-                                  <div className="text-base font-bold leading-tight text-slate-900">{scoreSummary.label}</div>
-                                  <p className="text-sm leading-5 text-slate-500">{truncateCopy(scoreSummary.action, 75)}</p>
-                                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                    <Badge className={confidenceMeta.badgeClassName}>{activeResult.confidence} confidence</Badge>
-                                    <Badge className={resultSource.badgeClassName}>{resultSource.label}</Badge>
-                                  </div>
+                        {/* ── Score overview bar ── */}
+                        <div className="flex flex-wrap items-center gap-5 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                          <ScoreRing score={scoreSummary.overall} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xl font-bold text-slate-900">{scoreSummary.label}</div>
+                            <p className="mt-0.5 text-sm leading-5 text-slate-500">{scoreSummary.action}</p>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              <Badge className={confidenceMeta.badgeClassName}>Confidence: {activeResult.confidence}</Badge>
+                              <Badge className={resultSource.badgeClassName}>{resultSource.label}</Badge>
+                            </div>
+                            {analysisNotice && <p className="mt-1.5 text-xs text-cyan-700">{analysisNotice}</p>}
+                          </div>
+                          <div className="hidden sm:flex gap-6 border-l border-slate-100 pl-5">
+                            {scoreSummary.dimensions.map((d) => (
+                              <div key={d.label} className="min-w-[52px] text-center">
+                                <div className="text-2xl font-bold tabular-nums text-slate-900">{d.score}</div>
+                                <div className="mt-0.5 text-xs font-medium text-slate-500">{d.label}</div>
+                                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                  <div className={cn('h-full rounded-full', d.toneClassName)} style={{ width: `${d.score}%` }} />
                                 </div>
                               </div>
-                              {analysisNotice && (
-                                <p className="mt-3 border-t border-slate-100 pt-3 text-xs leading-5 text-cyan-700">{analysisNotice}</p>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* ── Main layout: photo left (3fr), sidebar right (2fr) ── */}
+                        <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
+
+                          {/* Photo + detail panel */}
+                          <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+                            <div className="relative bg-slate-100" style={uploadedImageFrameStyle}>
+                              <img
+                                src={uploadedImage ?? ''}
+                                alt={effectiveDetail.type === 'future' ? 'Projected condition' : 'Current condition'}
+                                className="h-full w-full object-cover"
+                              />
+                              {effectiveDetail.type === 'future' && (
+                                <>
+                                  <div className="absolute inset-0 bg-gradient-to-br from-rose-500/25 via-transparent to-amber-400/25" />
+                                  <div className="absolute inset-x-0 bottom-0 p-5">
+                                    <div className="rounded-[1rem] border border-white/15 bg-black/50 p-4 text-white backdrop-blur">
+                                      <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">{activeResult.futureRiskSnapshot.projectionLabel}</div>
+                                      <p className="mt-1 text-sm leading-6 text-slate-200">{activeResult.futureRiskSnapshot.summary}</p>
+                                    </div>
+                                  </div>
+                                </>
                               )}
+                              <AnalysisOverlay active={effectiveDetail.type === 'current'} />
                             </div>
 
-                            {/* Signal breakdown */}
-                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Signal breakdown</div>
-                              <div className="space-y-3">
-                                {scoreSummary.dimensions.map((d) => (
-                                  <div key={d.label} className="flex items-center gap-3">
-                                    <span className="w-18 shrink-0 text-sm font-medium text-slate-700">{d.label}</span>
-                                    <div className="flex-1"><ResultMeter score={Math.max(1, Math.round(d.score / 34))} activeClassName={d.toneClassName} /></div>
-                                    <span className="w-8 shrink-0 text-right text-xs tabular-nums text-slate-400">{d.score}</span>
+                            <div className="p-5 space-y-4">
+                              {/* Current condition */}
+                              {effectiveDetail.type === 'current' && (
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                  <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">What the AI sees right now</div>
+                                    <p className="mt-2 text-sm leading-7 text-slate-600">{activeResult.currentVisibleCondition.summary}</p>
                                   </div>
-                                ))}
-                              </div>
-                              <div className="mt-3 border-t border-slate-100 pt-3">
-                                <BenchmarkBar score={scoreSummary.overall} />
-                              </div>
+                                  <div className="space-y-2">
+                                    {activeResult.currentVisibleCondition.focusPoints.map((point, i) => {
+                                      const styles = ['border-cyan-200 bg-cyan-50/80', 'border-amber-200 bg-amber-50/80', 'border-rose-200 bg-rose-50/80']
+                                      const icons = ['bg-cyan-600', 'bg-amber-500', 'bg-rose-500']
+                                      return (
+                                        <div key={point} className={cn('rounded-[0.9rem] border p-3', styles[i] || 'border-slate-200 bg-white')}>
+                                          <div className="flex items-start gap-2.5">
+                                            <div className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-bold text-white', icons[i] || 'bg-slate-700')}>{i + 1}</div>
+                                            <p className="text-sm leading-6 text-slate-800">{point}</p>
+                                          </div>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Future risk */}
+                              {effectiveDetail.type === 'future' && (
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                  <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                                    <div className="text-sm font-semibold text-slate-900">If nothing changes…</div>
+                                    <p className="mt-2 text-sm leading-7 text-slate-600">{activeResult.futureRiskSnapshot.summary}</p>
+                                  </div>
+                                  <RiskTimeline risk={activeResult.futureRiskSnapshot} />
+                                </div>
+                              )}
+
+                              {/* Insight detail */}
+                              {selectedInsight && (() => {
+                                const sm = getSeverityMeta(selectedInsight.severity)
+                                const SeverityIcon = sm.icon
+                                return (
+                                  <div className="space-y-4">
+                                    <div className={cn('rounded-[1.25rem] border p-5', sm.panelClassName)}>
+                                      <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
+                                          <SeverityIcon className="h-4 w-4 text-slate-900" />
+                                        </div>
+                                        <Badge className={sm.badgeClassName}>{selectedInsight.severity}</Badge>
+                                      </div>
+                                      <div className="mt-3 text-lg font-semibold text-slate-950">{selectedInsight.title}</div>
+                                      <p className="mt-1.5 text-sm leading-7 text-slate-600">{selectedInsight.detail}</p>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                      <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
+                                        <div className="text-sm font-semibold text-slate-900">What the AI noticed</div>
+                                        <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.summary}</p>
+                                      </div>
+                                      <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
+                                        <div className="text-sm font-semibold text-slate-900">Why this matters</div>
+                                        <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.whyItMatters}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })()}
                             </div>
+                          </div>
+
+                          {/* Right sidebar */}
+                          <div className="space-y-3">
 
                             {/* Top finding */}
                             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
@@ -1020,32 +1102,8 @@ export default function BiteRevealPrototype() {
                               <p className="mt-1.5 text-sm leading-6 text-slate-500">{leadInsight.summary}</p>
                             </div>
 
-                            {/* Next steps — compact list */}
-                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Next steps</div>
-                              <div className="space-y-3">
-                                {activeResult.actions.map((action) => {
-                                  const urgencyStyle = {
-                                    today: 'bg-rose-100 text-rose-700',
-                                    'this-week': 'bg-amber-100 text-amber-700',
-                                    'this-month': 'bg-cyan-100 text-cyan-700',
-                                  }[action.urgency]
-                                  const urgencyLabel = { today: 'Today', 'this-week': 'This week', 'this-month': 'This month' }[action.urgency]
-                                  return (
-                                    <div key={action.title} className="flex items-start gap-2.5">
-                                      <span className={cn('mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', urgencyStyle)}>{urgencyLabel}</span>
-                                      <div>
-                                        <div className="text-sm font-semibold text-slate-900">{action.title}</div>
-                                        <p className="mt-0.5 text-xs leading-5 text-slate-500">{truncateCopy(action.description, 85)}</p>
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
-
-                            {/* Explore — compact nav */}
-                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                            {/* Explore nav */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
                               <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Explore</div>
                               <div className="space-y-0.5">
                                 {([
@@ -1078,6 +1136,35 @@ export default function BiteRevealPrototype() {
                               </div>
                             </div>
 
+                            {/* Next steps */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Next steps</div>
+                              <div className="space-y-3">
+                                {activeResult.actions.map((action) => {
+                                  const urgencyStyle = {
+                                    today: 'bg-rose-100 text-rose-700',
+                                    'this-week': 'bg-amber-100 text-amber-700',
+                                    'this-month': 'bg-cyan-100 text-cyan-700',
+                                  }[action.urgency]
+                                  const urgencyLabel = { today: 'Today', 'this-week': 'This week', 'this-month': 'This month' }[action.urgency]
+                                  return (
+                                    <div key={action.title} className="flex items-start gap-2.5">
+                                      <span className={cn('mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', urgencyStyle)}>{urgencyLabel}</span>
+                                      <div>
+                                        <div className="text-sm font-semibold text-slate-900">{action.title}</div>
+                                        <p className="mt-0.5 text-xs leading-5 text-slate-500">{truncateCopy(action.description, 90)}</p>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Benchmark */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                              <BenchmarkBar score={scoreSummary.overall} />
+                            </div>
+
                             {/* AI Coaching */}
                             <CoachingPanel result={activeResult} scoreSummary={scoreSummary} apiBaseUrl={apiBaseUrl} />
 
@@ -1108,110 +1195,6 @@ export default function BiteRevealPrototype() {
                             <div className="grid grid-cols-2 gap-3">
                               <Button variant="outline" onClick={returnHome}><House className="h-4 w-4" /> Home</Button>
                               <Button variant="outline" onClick={resetDemo}><RefreshCw className="h-4 w-4" /> New scan</Button>
-                            </div>
-                          </div>
-
-                          {/* Right detail panel */}
-                          <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
-                            <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-4">
-                              <div className="text-base font-semibold text-slate-900">{detailLabel}</div>
-                              <div className="mt-0.5 text-sm text-slate-500">Select any item on the left to explore it here.</div>
-                            </div>
-                            <div className="space-y-5 p-5 md:p-6">
-
-                              {/* Current condition */}
-                              {effectiveDetail.type === 'current' && (
-                                <div className="space-y-5">
-                                  <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-100" style={uploadedImageFrameStyle}>
-                                    <img src={uploadedImage ?? ''} alt="Current condition" className="h-full w-full object-cover" />
-                                    <AnalysisOverlay active={true} />
-                                  </div>
-                                  <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                                      <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">What the AI sees right now</div>
-                                      <p className="mt-3 text-sm leading-7 text-slate-600">{activeResult.currentVisibleCondition.summary}</p>
-                                    </div>
-                                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                                      {activeResult.currentVisibleCondition.focusPoints.map((point, i) => {
-                                        const styles = ['border-cyan-200 bg-cyan-50/80', 'border-amber-200 bg-amber-50/80', 'border-rose-200 bg-rose-50/80']
-                                        const icons = ['bg-cyan-600', 'bg-amber-500', 'bg-rose-500']
-                                        return (
-                                          <div key={point} className={cn('rounded-[1rem] border p-4', styles[i] || 'border-slate-200 bg-white')}>
-                                            <div className="flex items-start gap-3">
-                                              <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white', icons[i] || 'bg-slate-700')}>{i + 1}</div>
-                                              <p className="text-sm leading-6 text-slate-800">{point}</p>
-                                            </div>
-                                          </div>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Future risk */}
-                              {effectiveDetail.type === 'future' && (
-                                <div className="space-y-5">
-                                  <div className="relative overflow-hidden rounded-[1.5rem] bg-slate-950" style={uploadedImageFrameStyle}>
-                                    <img src={uploadedImage ?? ''} alt="Projected condition" className="h-full w-full object-cover" />
-                                    <div className="absolute inset-0 bg-gradient-to-br from-rose-500/25 via-transparent to-amber-400/25" />
-                                    <div className="absolute inset-x-0 bottom-0 p-5">
-                                      <div className="rounded-[1rem] border border-white/15 bg-black/50 p-4 text-white backdrop-blur">
-                                        <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">{activeResult.futureRiskSnapshot.projectionLabel}</div>
-                                        <p className="mt-1 text-sm leading-6 text-slate-200">{activeResult.futureRiskSnapshot.summary}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                                      <div className="text-sm font-semibold text-slate-900">If nothing changes…</div>
-                                      <p className="mt-2 text-sm leading-7 text-slate-600">{activeResult.futureRiskSnapshot.summary}</p>
-                                    </div>
-                                    <div className="space-y-3">
-                                      <RiskTimeline risk={activeResult.futureRiskSnapshot} />
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Insight detail */}
-                              {selectedInsight && (() => {
-                                const sm = getSeverityMeta(selectedInsight.severity)
-                                const SeverityIcon = sm.icon
-                                return (
-                                  <div className="space-y-5">
-                                    <div className={cn('rounded-[1.5rem] border p-5', sm.panelClassName)}>
-                                      <div className="flex flex-wrap items-start justify-between gap-4">
-                                        <div className="max-w-2xl">
-                                          <div className="flex items-center gap-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
-                                              <SeverityIcon className="h-4 w-4 text-slate-900" />
-                                            </div>
-                                            <Badge className={sm.badgeClassName}>{selectedInsight.severity}</Badge>
-                                          </div>
-                                          <div className="mt-4 text-xl font-semibold tracking-tight text-slate-950">{selectedInsight.title}</div>
-                                          <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.detail}</p>
-                                        </div>
-                                        <div className="min-w-[140px] rounded-[1.1rem] bg-white/90 p-3.5 ring-1 ring-slate-200/80">
-                                          <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Signal</div>
-                                          <div className="mt-1.5 text-sm font-semibold text-slate-900">{selectedInsight.severity}</div>
-                                          <div className="mt-2.5"><ResultMeter score={sm.score} activeClassName={sm.dotClassName} /></div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                      <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
-                                        <div className="text-sm font-semibold text-slate-900">What the AI noticed</div>
-                                        <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.summary}</p>
-                                      </div>
-                                      <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
-                                        <div className="text-sm font-semibold text-slate-900">Why this matters</div>
-                                        <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.whyItMatters}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )
-                              })()}
                             </div>
                           </div>
                         </div>
