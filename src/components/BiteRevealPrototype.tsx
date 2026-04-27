@@ -1298,28 +1298,28 @@ export default function BiteRevealPrototype() {
                               {/* Current condition */}
                               {effectiveDetail.type === 'current' && (
                                 <div className="space-y-5">
-                                  <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_320px]">
-                                    <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-100 lg:aspect-[5/4] 2xl:aspect-[4/3]">
-                                      <img src={uploadedImage ?? ''} alt="Current condition" className="h-full w-full object-cover" />
-                                      <AnalysisOverlay active={true} />
-                                    </div>
+                                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-100 md:aspect-[16/11] xl:aspect-[3/2]">
+                                    <img src={uploadedImage ?? ''} alt="Current condition" className="h-full w-full object-cover" />
+                                    <AnalysisOverlay active={true} />
+                                  </div>
+                                  <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                                     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
                                       <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">What the AI sees right now</div>
                                       <p className="mt-3 text-sm leading-7 text-slate-600">{activeResult.currentVisibleCondition.summary}</p>
-                                      <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-1">
-                                        {activeResult.currentVisibleCondition.focusPoints.map((point, i) => {
-                                          const styles = ['border-cyan-200 bg-cyan-50/80', 'border-amber-200 bg-amber-50/80', 'border-rose-200 bg-rose-50/80']
-                                          const icons = ['bg-cyan-600', 'bg-amber-500', 'bg-rose-500']
-                                          return (
-                                            <div key={point} className={cn('rounded-[1rem] border p-4 shadow-sm', styles[i] || 'border-slate-200 bg-white')}>
-                                              <div className="flex items-start gap-3">
-                                                <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white', icons[i] || 'bg-slate-700')}>{i + 1}</div>
-                                                <p className="text-sm leading-6 text-slate-800">{point}</p>
-                                              </div>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                                      {activeResult.currentVisibleCondition.focusPoints.map((point, i) => {
+                                        const styles = ['border-cyan-200 bg-cyan-50/80', 'border-amber-200 bg-amber-50/80', 'border-rose-200 bg-rose-50/80']
+                                        const icons = ['bg-cyan-600', 'bg-amber-500', 'bg-rose-500']
+                                        return (
+                                          <div key={point} className={cn('rounded-[1rem] border p-4 shadow-sm', styles[i] || 'border-slate-200 bg-white')}>
+                                            <div className="flex items-start gap-3">
+                                              <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white', icons[i] || 'bg-slate-700')}>{i + 1}</div>
+                                              <p className="text-sm leading-6 text-slate-800">{point}</p>
                                             </div>
-                                          )
-                                        })}
-                                      </div>
+                                          </div>
+                                        )
+                                      })}
                                     </div>
                                   </div>
                                 </div>
@@ -1328,9 +1328,8 @@ export default function BiteRevealPrototype() {
                               {/* Future risk */}
                               {effectiveDetail.type === 'future' && (
                                 <div className="space-y-5">
-                                  <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_320px]">
-                                    <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-950 lg:aspect-[5/4] 2xl:aspect-[4/3]">
-                                      <img src={uploadedImage ?? ''} alt="Projected" className="h-full w-full object-cover opacity-60 saturate-50" />
+                                  <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-950 md:aspect-[16/11] xl:aspect-[3/2]">
+                                      <img src={uploadedImage ?? ''} alt="Projected condition" className="h-full w-full object-cover" />
                                       <div className="absolute inset-0 bg-gradient-to-br from-rose-500/25 via-transparent to-amber-400/25" />
                                       <div className="absolute inset-x-0 bottom-0 p-5">
                                         <div className="rounded-[1rem] border border-white/15 bg-black/50 p-4 text-white backdrop-blur">
@@ -1339,8 +1338,12 @@ export default function BiteRevealPrototype() {
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="space-y-3">
+                                  <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
                                       <div className="text-sm font-semibold text-slate-900">If nothing changes…</div>
+                                      <p className="mt-2 text-sm leading-7 text-slate-600">{activeResult.futureRiskSnapshot.summary}</p>
+                                    </div>
+                                    <div className="space-y-3">
                                       <RiskTimeline risk={activeResult.futureRiskSnapshot} />
                                     </div>
                                   </div>
