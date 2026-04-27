@@ -1130,7 +1130,7 @@ export default function BiteRevealPrototype() {
                     ) : (
                       /* Results step */
                       <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-                        <div className="grid gap-4 xl:grid-cols-[390px_minmax(0,1fr)]">
+                        <div className="grid gap-5 2xl:grid-cols-[350px_minmax(0,1fr)]">
 
                           {/* Left panel */}
                           <Card className="rounded-[1.5rem] border-slate-200/80">
@@ -1298,15 +1298,15 @@ export default function BiteRevealPrototype() {
                               {/* Current condition */}
                               {effectiveDetail.type === 'current' && (
                                 <div className="space-y-5">
-                                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_300px]">
-                                    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-100">
+                                  <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_320px]">
+                                    <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-100 lg:aspect-[5/4] 2xl:aspect-[4/3]">
                                       <img src={uploadedImage ?? ''} alt="Current condition" className="h-full w-full object-cover" />
                                       <AnalysisOverlay active={true} />
                                     </div>
                                     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
                                       <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">What the AI sees right now</div>
                                       <p className="mt-3 text-sm leading-7 text-slate-600">{activeResult.currentVisibleCondition.summary}</p>
-                                      <div className="mt-4 space-y-3">
+                                      <div className="mt-4 grid gap-3 sm:grid-cols-2 2xl:grid-cols-1">
                                         {activeResult.currentVisibleCondition.focusPoints.map((point, i) => {
                                           const styles = ['border-cyan-200 bg-cyan-50/80', 'border-amber-200 bg-amber-50/80', 'border-rose-200 bg-rose-50/80']
                                           const icons = ['bg-cyan-600', 'bg-amber-500', 'bg-rose-500']
@@ -1328,8 +1328,8 @@ export default function BiteRevealPrototype() {
                               {/* Future risk */}
                               {effectiveDetail.type === 'future' && (
                                 <div className="space-y-5">
-                                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_300px]">
-                                    <div className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-950">
+                                  <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_320px]">
+                                    <div className="relative aspect-[4/3] overflow-hidden rounded-[1.5rem] bg-slate-950 lg:aspect-[5/4] 2xl:aspect-[4/3]">
                                       <img src={uploadedImage ?? ''} alt="Projected" className="h-full w-full object-cover opacity-60 saturate-50" />
                                       <div className="absolute inset-0 bg-gradient-to-br from-rose-500/25 via-transparent to-amber-400/25" />
                                       <div className="absolute inset-x-0 bottom-0 p-5">
