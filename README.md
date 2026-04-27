@@ -68,7 +68,7 @@ Recommended Render env vars:
 ```text
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your_key_here
-GEMINI_MODEL=gemini-2.0-flash
+GEMINI_MODEL=gemini-2.5-flash
 ALLOWED_ORIGINS=https://elaine2003101.github.io,http://localhost:5173
 ```
 

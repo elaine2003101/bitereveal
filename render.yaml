@@ -11,6 +11,6 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-2.0-flash
+        value: gemini-2.5-flash
       - key: ALLOWED_ORIGINS
         value: https://elaine2003101.github.io,http://localhost:5173

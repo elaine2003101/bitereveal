@@ -3,7 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertCircle,
   ArrowRight,
-  BarChart3,
   Calendar,
   Camera,
   CheckCircle2,
@@ -298,31 +297,6 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-function ActionCard({ action }: { action: AnalysisAction }) {
-  const meta = {
-    today: { icon: Zap, color: 'border-rose-200 bg-rose-50', badge: 'bg-rose-100 text-rose-700', label: 'Do today' },
-    'this-week': { icon: Calendar, color: 'border-amber-200 bg-amber-50', badge: 'bg-amber-100 text-amber-700', label: 'This week' },
-    'this-month': { icon: Clock, color: 'border-cyan-200 bg-cyan-50', badge: 'bg-cyan-100 text-cyan-700', label: 'This month' },
-  }[action.urgency]
-  const Icon = meta.icon
-
-  return (
-    <div className={cn('rounded-[1rem] border p-4', meta.color)}>
-      <div className="flex items-start gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-          <Icon className="h-4 w-4 text-slate-700" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-slate-900">{action.title}</span>
-            <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', meta.badge)}>{meta.label}</span>
-          </div>
-          <p className="mt-1 text-sm leading-6 text-slate-600">{truncateCopy(action.description, 110)}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function RiskTimeline({ risk }: { risk: AnalysisResult['futureRiskSnapshot'] }) {
   const steps = [
@@ -352,26 +326,6 @@ function ResultMeter({ score, activeClassName }: { score: number; activeClassNam
   )
 }
 
-function DetailNavCard({ title, subtitle, active, onClick, badge }: {
-  title: string; subtitle?: string; active: boolean; onClick: () => void; badge?: string
-}) {
-  return (
-    <button type="button"
-      className={cn('w-full rounded-[1.15rem] border p-4 text-left transition', active ? 'border-cyan-300 bg-cyan-50 shadow-sm shadow-cyan-100' : 'border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50/40')}
-      onClick={onClick}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-slate-900">{title}</div>
-          {subtitle && <div className="mt-1 text-sm leading-5 text-slate-500">{subtitle}</div>}
-        </div>
-        <div className="shrink-0">
-          {badge ? <Badge className="border-slate-200 bg-white/80 text-slate-700">{badge}</Badge> : <ChevronRight className="h-4 w-4 text-slate-400" />}
-        </div>
-      </div>
-    </button>
-  )
-}
 
 function AnalysisOverlay({ active }: { active: boolean }) {
   return (
@@ -1016,170 +970,154 @@ export default function BiteRevealPrototype() {
                     ) : (
                       /* Results step */
                       <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-5">
-                        <div className="grid gap-5 2xl:grid-cols-[350px_minmax(0,1fr)]">
+                        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
 
-                          {/* Left panel */}
-                          <Card className="rounded-[1.5rem] border-slate-200/80">
-                            <CardHeader className="space-y-3 border-b border-slate-100 bg-slate-50/70">
-                              <div className="text-sm font-semibold text-cyan-700">AI result summary</div>
+                          {/* Left sidebar */}
+                          <div className="space-y-3">
 
-                              {/* Score ring + label */}
-                              <div className="flex items-center gap-5">
+                            {/* Score header */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                              <div className="flex items-center gap-4">
                                 <ScoreRing score={scoreSummary.overall} />
-                                <div className="space-y-1">
-                                  <div className="text-lg font-bold leading-tight text-slate-900">{scoreSummary.label}</div>
-                                  <p className="text-sm leading-6 text-slate-500">{truncateCopy(scoreSummary.action, 88)}</p>
-                                  <div className="flex flex-wrap gap-1.5 pt-1">
-                                    <Badge className={confidenceMeta.badgeClassName}>Confidence: {activeResult.confidence}</Badge>
+                                <div className="min-w-0 space-y-1.5">
+                                  <div className="text-base font-bold leading-tight text-slate-900">{scoreSummary.label}</div>
+                                  <p className="text-sm leading-5 text-slate-500">{truncateCopy(scoreSummary.action, 75)}</p>
+                                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                    <Badge className={confidenceMeta.badgeClassName}>{activeResult.confidence} confidence</Badge>
                                     <Badge className={resultSource.badgeClassName}>{resultSource.label}</Badge>
                                   </div>
                                 </div>
                               </div>
-                            </CardHeader>
-
-                            <CardContent className="space-y-4 p-5">
-                              <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                                <div className="rounded-[1rem] border border-slate-200 bg-white p-3">
-                                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Signal</div>
-                                  <div className="mt-1 text-lg font-semibold text-slate-950">{scoreSummary.overall}/100</div>
-                                </div>
-                                <div className="rounded-[1rem] border border-slate-200 bg-white p-3">
-                                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Confidence</div>
-                                  <div className="mt-1 text-lg font-semibold text-slate-950">{activeResult.confidence}</div>
-                                </div>
-                                <div className="rounded-[1rem] border border-slate-200 bg-white p-3">
-                                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Status</div>
-                                  <div className="mt-1 text-lg font-semibold text-slate-950">{resultSource.detail}</div>
-                                </div>
-                              </div>
-
                               {analysisNotice && (
-                                <div className="rounded-[1rem] border border-cyan-200 bg-cyan-50/80 p-3 text-sm text-cyan-900">
-                                  <div className="font-medium">{resultSource.label}</div>
-                                  <p className="mt-0.5 leading-6">{analysisNotice}</p>
-                                </div>
+                                <p className="mt-3 border-t border-slate-100 pt-3 text-xs leading-5 text-cyan-700">{analysisNotice}</p>
                               )}
+                            </div>
 
-                              {/* Benchmark */}
-                              <BenchmarkBar score={scoreSummary.overall} />
-
-                              {/* Main finding */}
-                              <div className="rounded-[1.25rem] border border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#eef7ff_100%)] p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div>
-                                    <div className="text-xs uppercase tracking-[0.18em] text-cyan-700">Main takeaway</div>
-                                    <div className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{leadInsight.title}</div>
-                                  </div>
-                                  <Badge className={getSeverityMeta(leadInsight.severity).badgeClassName}>{leadInsight.severity}</Badge>
-                                </div>
-                                <p className="mt-2 text-sm leading-6 text-slate-600">{truncateCopy(leadInsight.summary, 95)}</p>
-                                <p className="mt-3 text-sm leading-6 text-slate-500">{truncateCopy(scoreSummary.action, 82)}</p>
-                              </div>
-
-                              {/* Recommended actions */}
-                              <div>
-                                <div className="mb-3 text-sm font-semibold text-slate-900">What to do next</div>
-                                <div className="space-y-2">
-                                  {activeResult.actions.map((action) => (
-                                    <ActionCard key={action.title} action={action} />
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Detail nav */}
-                              <div>
-                                <div className="mb-3 text-sm font-semibold text-slate-900">Choose a focus area</div>
-                                <div className="space-y-2">
-                                  <DetailNavCard title="Current photo" subtitle="See the overlay and the key visible focus points." active={effectiveDetail.type === 'current'} onClick={() => setSelectedDetail({ type: 'current' })} />
-                                  <DetailNavCard title="Future risk & timeline" subtitle="See what may change over 3 months, 1 year, and 3 years." active={effectiveDetail.type === 'future'} onClick={() => setSelectedDetail({ type: 'future' })} />
-                                  {activeResult.insights.map((insight, index) => (
-                                    <DetailNavCard key={insight.title} title={insight.title} subtitle={truncateCopy(insight.summary, 74)} badge={insight.severity}
-                                      active={effectiveDetail.type === 'insight' && effectiveDetail.index === index}
-                                      onClick={() => setSelectedDetail({ type: 'insight', index })}
-                                    />
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Score breakdown */}
-                              <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                                  <BarChart3 className="h-4 w-4 text-cyan-600" /> Score breakdown
-                                </div>
-                                <div className="mt-3 space-y-3">
-                                  {scoreSummary.dimensions.map((d) => (
-                                    <div key={d.label}>
-                                      <div className="flex justify-between text-sm">
-                                        <span className="font-medium text-slate-900">{d.label}</span>
-                                        <span className="text-slate-500">{d.score}/100</span>
-                                      </div>
-                                      <div className="mt-1.5">
-                                        <ResultMeter score={Math.max(1, Math.round(d.score / 34))} activeClassName={d.toneClassName} />
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* AI Coaching */}
-                              <CoachingPanel result={activeResult} scoreSummary={scoreSummary} apiBaseUrl={apiBaseUrl} />
-
-                              {/* Share */}
-                              <ShareCard result={activeResult} scoreSummary={scoreSummary} imageSrc={uploadedImage} />
-
-                              {/* Consult notes */}
-                              <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                                  <Shield className="h-4 w-4 text-cyan-600" /> Bring this to your dentist
-                                </div>
-                                <p className="mt-2 text-sm leading-6 text-slate-500">Copy a short summary with your score, top findings, and next steps.</p>
-                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                  <Button variant="outline" onClick={copyConsultationNotes}>
-                                    <Copy className="h-4 w-4" /> {consultationCopied ? 'Copied!' : 'Copy notes'}
-                                  </Button>
-                                  <Button variant="outline" onClick={resetDemo}>
-                                    <RefreshCw className="h-4 w-4" /> New scan
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {previousScan && historyDelta && (
-                                <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                                  <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                                    <History className="h-4 w-4 text-cyan-600" /> vs. last scan
-                                  </div>
-                                  <div className="mt-2 text-sm font-semibold text-slate-900">{historyDelta.title}</div>
-                                  <p className="mt-1 text-sm leading-6 text-slate-500">{historyDelta.detail}</p>
-                                  <Button variant="outline" className="mt-3 w-full" onClick={() => openHistoryScan(previousScan)}>Open previous scan</Button>
-                                </div>
-                              )}
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <Button variant="outline" onClick={returnHome}><House className="h-4 w-4" /> Home</Button>
-                                <Button variant="outline" onClick={resetDemo}><RefreshCw className="h-4 w-4" /> New scan</Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          {/* Right detail panel */}
-                          <Card className="rounded-[1.5rem] border-slate-200/80 shadow-sm">
-                            <CardHeader className="border-b border-slate-100 bg-white/80">
-                              <CardTitle className="text-xl">{detailLabel}</CardTitle>
-                              <CardDescription>Tap any section on the left to explore it in depth here.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-5 p-5 md:p-6">
-                              {/* Mini score bar */}
-                              <div className="grid gap-3 md:grid-cols-3">
+                            {/* Signal breakdown */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Signal breakdown</div>
+                              <div className="space-y-3">
                                 {scoreSummary.dimensions.map((d) => (
-                                  <div key={d.label} className="rounded-[1rem] border border-slate-200 bg-slate-50/80 p-4">
-                                    <div className="flex items-center justify-between text-sm">
-                                      <span className="font-semibold text-slate-900">{d.label}</span>
-                                      <span className="text-slate-500">{d.score}</span>
-                                    </div>
-                                    <div className="mt-3"><ResultMeter score={Math.max(1, Math.round(d.score / 34))} activeClassName={d.toneClassName} /></div>
+                                  <div key={d.label} className="flex items-center gap-3">
+                                    <span className="w-18 shrink-0 text-sm font-medium text-slate-700">{d.label}</span>
+                                    <div className="flex-1"><ResultMeter score={Math.max(1, Math.round(d.score / 34))} activeClassName={d.toneClassName} /></div>
+                                    <span className="w-8 shrink-0 text-right text-xs tabular-nums text-slate-400">{d.score}</span>
                                   </div>
                                 ))}
                               </div>
+                              <div className="mt-3 border-t border-slate-100 pt-3">
+                                <BenchmarkBar score={scoreSummary.overall} />
+                              </div>
+                            </div>
+
+                            {/* Top finding */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Top finding</div>
+                                <Badge className={getSeverityMeta(leadInsight.severity).badgeClassName}>{leadInsight.severity}</Badge>
+                              </div>
+                              <div className="mt-2 text-base font-semibold text-slate-900">{leadInsight.title}</div>
+                              <p className="mt-1.5 text-sm leading-6 text-slate-500">{leadInsight.summary}</p>
+                            </div>
+
+                            {/* Next steps — compact list */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Next steps</div>
+                              <div className="space-y-3">
+                                {activeResult.actions.map((action) => {
+                                  const urgencyStyle = {
+                                    today: 'bg-rose-100 text-rose-700',
+                                    'this-week': 'bg-amber-100 text-amber-700',
+                                    'this-month': 'bg-cyan-100 text-cyan-700',
+                                  }[action.urgency]
+                                  const urgencyLabel = { today: 'Today', 'this-week': 'This week', 'this-month': 'This month' }[action.urgency]
+                                  return (
+                                    <div key={action.title} className="flex items-start gap-2.5">
+                                      <span className={cn('mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold', urgencyStyle)}>{urgencyLabel}</span>
+                                      <div>
+                                        <div className="text-sm font-semibold text-slate-900">{action.title}</div>
+                                        <p className="mt-0.5 text-xs leading-5 text-slate-500">{truncateCopy(action.description, 85)}</p>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Explore — compact nav */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+                              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Explore</div>
+                              <div className="space-y-0.5">
+                                {([
+                                  { key: 'current', label: 'Current photo', badge: undefined },
+                                  { key: 'future', label: 'Future risk', badge: undefined },
+                                  ...activeResult.insights.map((ins, i) => ({ key: `insight-${i}`, label: ins.title, badge: ins.severity })),
+                                ] as { key: string; label: string; badge?: string }[]).map((item) => {
+                                  const isActive =
+                                    item.key === 'current' ? effectiveDetail.type === 'current'
+                                    : item.key === 'future' ? effectiveDetail.type === 'future'
+                                    : effectiveDetail.type === 'insight' && effectiveDetail.index === Number(item.key.split('-')[1])
+                                  const handleClick = () => {
+                                    if (item.key === 'current') setSelectedDetail({ type: 'current' })
+                                    else if (item.key === 'future') setSelectedDetail({ type: 'future' })
+                                    else setSelectedDetail({ type: 'insight', index: Number(item.key.split('-')[1]) })
+                                  }
+                                  return (
+                                    <button key={item.key} type="button"
+                                      className={cn('flex w-full items-center justify-between rounded-[0.85rem] px-3 py-2.5 text-sm transition',
+                                        isActive ? 'bg-cyan-50 font-medium text-cyan-800' : 'text-slate-600 hover:bg-slate-50')}
+                                      onClick={handleClick}
+                                    >
+                                      <span>{item.label}</span>
+                                      {item.badge
+                                        ? <span className="text-xs text-slate-400">{item.badge}</span>
+                                        : <ChevronRight className="h-3.5 w-3.5 text-slate-300" />}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            {/* AI Coaching */}
+                            <CoachingPanel result={activeResult} scoreSummary={scoreSummary} apiBaseUrl={apiBaseUrl} />
+
+                            {/* Share + consult */}
+                            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+                              <ShareCard result={activeResult} scoreSummary={scoreSummary} imageSrc={uploadedImage} />
+                              <div className="mt-2 grid grid-cols-2 gap-2">
+                                <Button variant="outline" size="sm" onClick={copyConsultationNotes}>
+                                  <Copy className="h-3.5 w-3.5" /> {consultationCopied ? 'Copied!' : 'Copy notes'}
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={resetDemo}>
+                                  <RefreshCw className="h-3.5 w-3.5" /> New scan
+                                </Button>
+                              </div>
+                            </div>
+
+                            {previousScan && historyDelta && (
+                              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm">
+                                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                                  <History className="h-3.5 w-3.5" /> vs. last scan
+                                </div>
+                                <div className="mt-2 text-sm font-semibold text-slate-900">{historyDelta.title}</div>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">{historyDelta.detail}</p>
+                                <Button variant="outline" size="sm" className="mt-3 w-full" onClick={() => openHistoryScan(previousScan)}>Open previous scan</Button>
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <Button variant="outline" onClick={returnHome}><House className="h-4 w-4" /> Home</Button>
+                              <Button variant="outline" onClick={resetDemo}><RefreshCw className="h-4 w-4" /> New scan</Button>
+                            </div>
+                          </div>
+
+                          {/* Right detail panel */}
+                          <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+                            <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+                              <div className="text-base font-semibold text-slate-900">{detailLabel}</div>
+                              <div className="mt-0.5 text-sm text-slate-500">Select any item on the left to explore it here.</div>
+                            </div>
+                            <div className="space-y-5 p-5 md:p-6">
 
                               {/* Current condition */}
                               {effectiveDetail.type === 'current' && (
@@ -1198,9 +1136,9 @@ export default function BiteRevealPrototype() {
                                         const styles = ['border-cyan-200 bg-cyan-50/80', 'border-amber-200 bg-amber-50/80', 'border-rose-200 bg-rose-50/80']
                                         const icons = ['bg-cyan-600', 'bg-amber-500', 'bg-rose-500']
                                         return (
-                                          <div key={point} className={cn('rounded-[1rem] border p-4 shadow-sm', styles[i] || 'border-slate-200 bg-white')}>
+                                          <div key={point} className={cn('rounded-[1rem] border p-4', styles[i] || 'border-slate-200 bg-white')}>
                                             <div className="flex items-start gap-3">
-                                              <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white', icons[i] || 'bg-slate-700')}>{i + 1}</div>
+                                              <div className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white', icons[i] || 'bg-slate-700')}>{i + 1}</div>
                                               <p className="text-sm leading-6 text-slate-800">{point}</p>
                                             </div>
                                           </div>
@@ -1218,12 +1156,12 @@ export default function BiteRevealPrototype() {
                                     <img src={uploadedImage ?? ''} alt="Projected condition" className="h-full w-full object-cover" />
                                     <div className="absolute inset-0 bg-gradient-to-br from-rose-500/25 via-transparent to-amber-400/25" />
                                     <div className="absolute inset-x-0 bottom-0 p-5">
-                                        <div className="rounded-[1rem] border border-white/15 bg-black/50 p-4 text-white backdrop-blur">
-                                          <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">{activeResult.futureRiskSnapshot.projectionLabel}</div>
-                                          <p className="mt-1 text-sm leading-6 text-slate-200">{activeResult.futureRiskSnapshot.summary}</p>
-                                        </div>
+                                      <div className="rounded-[1rem] border border-white/15 bg-black/50 p-4 text-white backdrop-blur">
+                                        <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">{activeResult.futureRiskSnapshot.projectionLabel}</div>
+                                        <p className="mt-1 text-sm leading-6 text-slate-200">{activeResult.futureRiskSnapshot.summary}</p>
                                       </div>
                                     </div>
+                                  </div>
                                   <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                                     <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
                                       <div className="text-sm font-semibold text-slate-900">If nothing changes…</div>
@@ -1246,27 +1184,27 @@ export default function BiteRevealPrototype() {
                                       <div className="flex flex-wrap items-start justify-between gap-4">
                                         <div className="max-w-2xl">
                                           <div className="flex items-center gap-3">
-                                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
-                                              <SeverityIcon className="h-5 w-5 text-slate-900" />
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white ring-1 ring-slate-200">
+                                              <SeverityIcon className="h-4 w-4 text-slate-900" />
                                             </div>
                                             <Badge className={sm.badgeClassName}>{selectedInsight.severity}</Badge>
                                           </div>
-                                          <div className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">{selectedInsight.title}</div>
-                                          <p className="mt-3 text-sm leading-7 text-slate-600">{selectedInsight.detail}</p>
+                                          <div className="mt-4 text-xl font-semibold tracking-tight text-slate-950">{selectedInsight.title}</div>
+                                          <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.detail}</p>
                                         </div>
-                                        <div className="min-w-[160px] rounded-[1.1rem] bg-white/90 p-4 shadow-sm ring-1 ring-slate-200/80">
-                                          <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Signal strength</div>
-                                          <div className="mt-2 text-sm font-semibold text-slate-900">{selectedInsight.severity}</div>
-                                          <div className="mt-3"><ResultMeter score={sm.score} activeClassName={sm.dotClassName} /></div>
+                                        <div className="min-w-[140px] rounded-[1.1rem] bg-white/90 p-3.5 ring-1 ring-slate-200/80">
+                                          <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Signal</div>
+                                          <div className="mt-1.5 text-sm font-semibold text-slate-900">{selectedInsight.severity}</div>
+                                          <div className="mt-2.5"><ResultMeter score={sm.score} activeClassName={sm.dotClassName} /></div>
                                         </div>
                                       </div>
                                     </div>
                                     <div className="grid gap-4 md:grid-cols-2">
-                                      <div className="rounded-[1.2rem] border border-slate-200 bg-white p-5">
+                                      <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
                                         <div className="text-sm font-semibold text-slate-900">What the AI noticed</div>
                                         <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.summary}</p>
                                       </div>
-                                      <div className="rounded-[1.2rem] border border-slate-200 bg-white p-5">
+                                      <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
                                         <div className="text-sm font-semibold text-slate-900">Why this matters</div>
                                         <p className="mt-2 text-sm leading-7 text-slate-600">{selectedInsight.whyItMatters}</p>
                                       </div>
@@ -1274,8 +1212,8 @@ export default function BiteRevealPrototype() {
                                   </div>
                                 )
                               })()}
-                            </CardContent>
-                          </Card>
+                            </div>
+                          </div>
                         </div>
                       </motion.div>
                     )}

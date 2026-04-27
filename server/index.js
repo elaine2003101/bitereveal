@@ -14,8 +14,22 @@ const SUBSCRIBERS_FILE = join(__dirname, 'subscribers.json')
 
 const app = express()
 const port = Number(process.env.PORT || 8787)
-const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash'
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini'
+
+function hasConfiguredValue(value) {
+  if (typeof value !== 'string') return false
+  const trimmed = value.trim()
+  if (!trimmed) return false
+
+  const placeholders = new Set([
+    'your_gemini_api_key_here',
+    'your_openai_api_key_here',
+    'your_key_here',
+  ])
+
+  return !placeholders.has(trimmed)
+}
 
 const allowedOrigins = (
   process.env.ALLOWED_ORIGINS ||
@@ -202,22 +216,24 @@ const ANALYSIS_SCHEMA = {
 
 function getProvider() {
   const explicitProvider = process.env.AI_PROVIDER?.trim().toLowerCase()
+  const hasGeminiKey = hasConfiguredValue(process.env.GEMINI_API_KEY)
+  const hasOpenAIKey = hasConfiguredValue(process.env.OPENAI_API_KEY)
 
   if (explicitProvider === 'gemini') {
-    if (!process.env.GEMINI_API_KEY) throw new Error('Missing GEMINI_API_KEY')
+    if (!hasGeminiKey) throw new Error('Missing GEMINI_API_KEY')
     return { name: 'gemini', model: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL }
   }
 
   if (explicitProvider === 'openai') {
-    if (!process.env.OPENAI_API_KEY) throw new Error('Missing OPENAI_API_KEY')
+    if (!hasOpenAIKey) throw new Error('Missing OPENAI_API_KEY')
     return { name: 'openai', model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL }
   }
 
-  if (process.env.GEMINI_API_KEY) {
+  if (hasGeminiKey) {
     return { name: 'gemini', model: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL }
   }
 
-  if (process.env.OPENAI_API_KEY) {
+  if (hasOpenAIKey) {
     return { name: 'openai', model: process.env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL }
   }
 
@@ -303,16 +319,18 @@ async function analyzeWithGemini({ imageDataUrl, model }) {
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_request, response) => {
+  const hasGeminiKey = hasConfiguredValue(process.env.GEMINI_API_KEY)
+  const hasOpenAIKey = hasConfiguredValue(process.env.OPENAI_API_KEY)
   const provider =
     process.env.AI_PROVIDER?.trim().toLowerCase() ||
-    (process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENAI_API_KEY ? 'openai' : null)
+    (hasGeminiKey ? 'gemini' : hasOpenAIKey ? 'openai' : null)
 
   response.json({
     ok: true,
     provider,
-    hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
-    hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
-    hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY),
+    hasGeminiKey,
+    hasOpenAIKey,
+    hasAnthropicKey: hasConfiguredValue(process.env.ANTHROPIC_API_KEY),
     hasSmtp: Boolean(process.env.SMTP_HOST),
     model:
       provider === 'openai'
