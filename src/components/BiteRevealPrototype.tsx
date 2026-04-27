@@ -3,11 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertCircle,
   ArrowRight,
-  Calendar,
   Camera,
   CheckCircle2,
   ChevronRight,
-  Clock,
   Copy,
   Dumbbell,
   Eye,
@@ -24,7 +22,6 @@ import {
   TrendingUp,
   TriangleAlert,
   Upload,
-  Zap,
 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -316,15 +313,6 @@ function RiskTimeline({ risk }: { risk: AnalysisResult['futureRiskSnapshot'] }) 
   )
 }
 
-function ResultMeter({ score, activeClassName }: { score: number; activeClassName: string }) {
-  return (
-    <div className="flex gap-1.5">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className={cn('h-2 flex-1 rounded-full bg-white/70 ring-1 ring-slate-200', i < score && activeClassName)} />
-      ))}
-    </div>
-  )
-}
 
 
 function AnalysisOverlay({ active }: { active: boolean }) {
@@ -527,9 +515,7 @@ export default function BiteRevealPrototype() {
     catch { /* ignore */ }
   }
 
-  const detailLabel = effectiveDetail.type === 'current' ? activeResult.currentVisibleCondition.title
-    : effectiveDetail.type === 'future' ? activeResult.futureRiskSnapshot.title
-    : selectedInsight?.title
+
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.14),_transparent_30%),linear-gradient(180deg,#f8fbff_0%,#f6f7fb_100%)] text-slate-900">
