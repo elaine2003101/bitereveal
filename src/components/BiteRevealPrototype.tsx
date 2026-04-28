@@ -1214,7 +1214,7 @@ export default function BiteRevealPrototype() {
                 {activeTab === 'lifestyle' && <LifestyleCorrelation scanHistory={scanHistory} />}
                 {activeTab === 'explain' && <RiskExplainer />}
                 {activeTab === 'report' && <WeeklyReport apiBaseUrl={apiBaseUrl} scanHistory={scanHistory} />}
-                {activeTab === 'vision' && <FutureVision />}
+                {activeTab === 'vision' && <FutureVision scoreSummary={hasAnalyzed ? scoreSummary : undefined} />}
               </CardContent>
             </Card>
           </div>
